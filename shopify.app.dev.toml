@@ -1,0 +1,26 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "694837c36cee3cd1802aa50b11788cfb"
+application_url = "https://example.com"
+embedded = true
+name = "LensCraft Dev"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_app_proxy,write_products,write_metaobjects,write_metaobject_definitions,write_cart_transforms"
+optional_scopes = [ ]
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [ ]
+
+[webhooks]
+api_version = "2026-10"
+
+[build]
+automatically_update_urls_on_dev = true
+
+[app_proxy]
+url = "/apps/lenscraftdev"
+prefix = "apps"
+subpath = "lenscraftdev"

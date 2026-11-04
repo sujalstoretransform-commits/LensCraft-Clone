@@ -1,0 +1,15 @@
+query CartTransformRunInput {
+  cart {
+    lines {
+      id
+      cost {
+        amountPerQuantity {
+          amount
+        }
+      }
+      lensPrice: attribute(key: "_lens_price_minor") {
+        value
+      }
+    }
+  }
+}

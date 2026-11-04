@@ -1,0 +1,302 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+enum LensFamily {
+  clear
+  blue_light
+  light_adaptive
+  tinted
+  polarized
+  readers
+  non_prescription
+}
+
+enum LensPriceKind {
+  base
+  upgrade
+  add_on
+}
+
+enum LensRuleKind {
+  requires_option
+  incompatible_option
+  minimum_frame_height
+  minimum_sph
+  maximum_sph
+  minimum_cyl
+  maximum_cyl
+  minimum_add
+  maximum_add
+}
+
+enum LensOptionCategory {
+  lens_type
+  progressive_design
+  bifocal_design
+  coating
+  add_on
+}
+
+model LensConfiguration {
+  id                 String   @id @default(cuid())
+  shop               String
+  productId          String
+  variantId          String
+  currencyCode       String
+  lensType           String
+  lensIndex          String
+  prescriptionMethod String
+  prescription       Json?
+  createdAt          DateTime @default(now())
+
+  @@index([shop, createdAt])
+}
+
+model LensType {
+  id                    String                   @id @default(cuid())
+  code                  String                   @unique
+  name                  String
+  family                LensFamily
+  description           String?
+  active                Boolean                  @default(true)
+  prices                LensPrice[]
+  rules                 LensCompatibilityRule[]
+  supplierMappings      SupplierLensMapping[]
+  indexCompatibilities  LensIndexCompatibility[] @relation("LensTypeIndexCompatibilities")
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  lensTechnologyOptions LensTechnologyOption[]
+
+  @@index([family, active])
+}
+
+model LensIndex {
+  id                       String                   @id @default(cuid())
+  code                     String                   @unique
+  displayName              String
+  refractiveIndex          Decimal                  @db.Decimal(3, 2)
+  active                   Boolean                  @default(true)
+  prices                   LensPrice[]
+  rules                    LensCompatibilityRule[]
+  supplierMappings         SupplierLensMapping[]
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+  lensIndexCompatibilities LensIndexCompatibility[]
+
+  @@index([active])
+}
+
+model LensPrice {
+  id           String        @id @default(cuid())
+  code         String        @unique
+  kind         LensPriceKind
+  amountMinor  Int
+  currencyCode String        @db.VarChar(3)
+  lensTypeId   String?
+  lensType     LensType?     @relation(fields: [lensTypeId], references: [id], onDelete: Cascade)
+  lensIndexId  String?
+  lensIndex    LensIndex?    @relation(fields: [lensIndexId], references: [id], onDelete: Cascade)
+  lensOptionId String?
+  lensOption   LensOption?   @relation(fields: [lensOptionId], references: [id], onDelete: Cascade)
+
+  lensTechnologyId String?
+  lensTechnology   LensTechnology? @relation(fields: [lensTechnologyId], references: [id], onDelete: Cascade)
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, kind])
+  @@index([lensTypeId, lensIndexId, currencyCode, active])
+  @@index([lensOptionId, currencyCode, active])
+}
+
+model LensCompatibilityRule {
+  id                   String       @id @default(cuid())
+  code                 String       @unique
+  kind                 LensRuleKind
+  lensTypeId           String?
+  lensType             LensType?    @relation(fields: [lensTypeId], references: [id], onDelete: Cascade)
+  lensIndexId          String?
+  lensIndex            LensIndex?   @relation(fields: [lensIndexId], references: [id], onDelete: Cascade)
+  lensOptionId         String?
+  lensOption           LensOption?  @relation(fields: [lensOptionId], references: [id], onDelete: Cascade)
+  relatedOptionCode    String?
+  limitValue           Decimal?     @db.Decimal(6, 2)
+  minimumFrameHeightMm Int?
+  message              String
+  active               Boolean      @default(true)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  @@index([active, kind])
+  @@index([lensTypeId, lensIndexId, lensOptionId, active])
+}
+
+model SupplierLensMapping {
+  id                    String     @id @default(cuid())
+  supplier              String
+  supplierSku           String
+  supplierSpecification String?
+  lensTypeId            String
+  lensType              LensType   @relation(fields: [lensTypeId], references: [id], onDelete: Cascade)
+  lensIndexId           String?
+  lensIndex             LensIndex? @relation(fields: [lensIndexId], references: [id], onDelete: Cascade)
+  active                Boolean    @default(true)
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  @@unique([supplier, supplierSku])
+  @@index([lensTypeId, lensIndexId, active])
+}
+
+model LensIndexCompatibility {
+  id     String  @id @default(cuid())
+  active Boolean @default(true)
+
+  lensTypeId String
+  lensType   LensType @relation("LensTypeIndexCompatibilities", fields: [lensTypeId], references: [id], onDelete: Cascade)
+
+  lensOptionId String
+  lensOption   LensOption @relation(fields: [lensOptionId], references: [id], onDelete: Cascade)
+
+  lensTechnologyId String?
+  lensTechnology   LensTechnology? @relation(fields: [lensTechnologyId], references: [id], onDelete: Cascade)
+
+  lensIndexId String
+  lensIndex   LensIndex @relation(fields: [lensIndexId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([lensTypeId, lensOptionId, lensTechnologyId, lensIndexId])
+  @@index([lensTypeId, lensOptionId, active])
+  @@index([lensTechnologyId, active])
+}
+
+enum LensTechnologyColor {
+  GREY
+  AMBER
+}
+
+model LensOption {
+  id                       String                   @id @default(cuid())
+  code                     String                   @unique
+  name                     String
+  category                 LensOptionCategory
+  description              String?
+  active                   Boolean                  @default(true)
+  prices                   LensPrice[]
+  rules                    LensCompatibilityRule[]
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+  lensIndexCompatibilities LensIndexCompatibility[]
+  lensTechnologyOptions    LensTechnologyOption[]
+
+  @@index([category, active])
+}
+
+model LensTechnology {
+  id                       String                   @id @default(cuid())
+  code                     String                   @unique
+  name                     String
+  description              String?
+  active                   Boolean                  @default(true)
+  sortOrder                Int                      @default(0)
+  createdAt                DateTime                 @default(now())
+  updatedAt                DateTime                 @updatedAt
+  lensTechnologyOptions    LensTechnologyOption[]
+  lensIndexCompatibilities LensIndexCompatibility[]
+  lensPrices               LensPrice[]
+
+  @@index([active, sortOrder])
+}
+
+model LensTechnologyOption {
+  id     String  @id @default(cuid())
+  active Boolean @default(true)
+
+  lensType   LensType @relation(fields: [lensTypeId], references: [id], onDelete: Cascade)
+  lensTypeId String
+
+  lensOption   LensOption @relation(fields: [lensOptionId], references: [id], onDelete: Cascade)
+  lensOptionId String
+
+  lensTechnology   LensTechnology @relation(fields: [lensTechnologyId], references: [id], onDelete: Cascade)
+  lensTechnologyId String
+
+  @@unique([lensTypeId, lensOptionId, lensTechnologyId])
+  @@index([lensTypeId, lensOptionId, active])
+  @@index([lensTechnologyId, active])
+}
+
+model prescriptionMethod {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  name        String
+  description String?
+  active      Boolean @default(true)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, sortOrder])
+}
+
+model SavedPrescription {
+  id         String @id @default(cuid())
+  shop       String
+  customerId String
+  name       String
+
+  rightSph  Decimal? @db.Decimal(5, 2)
+  rightCyl  Decimal? @db.Decimal(5, 2)
+  rightAxis Int?
+
+  leftSph  Decimal? @db.Decimal(5, 2)
+  leftCyl  Decimal? @db.Decimal(5, 2)
+  leftAxis Int?
+
+  pd Decimal? @db.Decimal(5, 2)
+
+  fileKey  String?
+  fileName String?
+  fileType String?
+  fileSize Int?
+
+  prescribedAt DateTime?
+  expiresAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shop, customerId])
+  @@index([shop, customerId, updatedAt])
+}
