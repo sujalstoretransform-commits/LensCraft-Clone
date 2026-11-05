@@ -185,7 +185,7 @@ const getLensTechnologyIndexCompatibility = () => {
     });
 }
 
-const getLensTechnologies = () => {
+const getLensTechnologies = (currencyCode: string) => {
     return prisma.lensTechnology.findMany({
         where: { active: true },
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -196,7 +196,7 @@ const getLensTechnologies = () => {
             description: true,
             sortOrder: true,
             lensPrices: {
-                where: { active: true, },
+                where: { active: true, currencyCode },
                 select: priceFields,
             },
         },
@@ -243,7 +243,7 @@ export const loadLensCatalog = async (currencyCode: string) => {
         getLensOptions(currencyCode),
         getRules(),
         getLensIndexCompatibilities(),
-        getLensTechnologies(),
+        getLensTechnologies(currencyCode),
         getLensTechnologyIndexCompatibility(),
         getPrescriptionMethods(),
     ]);

@@ -1,4 +1,5 @@
 import prisma from "app/db.server";
+import { usdMinorToInrMinor } from "./pricing";
 
 const lensTypeOptions = [
   {
@@ -95,6 +96,31 @@ async function seedLensOptions() {
         kind: "add_on",
         amountMinor: price.amountMinor,
         currencyCode: "USD",
+        lensTypeId: null,
+        lensIndexId: null,
+        lensOptionId: option.id,
+        active: true,
+      },
+    });
+
+    await prisma.lensPrice.upsert({
+      where: {
+        code: `option-${price.code}-inr`,
+      },
+      update: {
+        kind: "add_on",
+        amountMinor: usdMinorToInrMinor(price.amountMinor),
+        currencyCode: "INR",
+        lensTypeId: null,
+        lensIndexId: null,
+        lensOptionId: option.id,
+        active: true,
+      },
+      create: {
+        code: `option-${price.code}-inr`,
+        kind: "add_on",
+        amountMinor: usdMinorToInrMinor(price.amountMinor),
+        currencyCode: "INR",
         lensTypeId: null,
         lensIndexId: null,
         lensOptionId: option.id,

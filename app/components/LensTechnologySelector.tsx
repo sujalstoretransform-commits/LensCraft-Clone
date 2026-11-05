@@ -14,6 +14,7 @@ export type LensTechnology = {
 export type LensTechnologyColor = "GREY" | "AMBER";
 
 type LensTechnologySelectorProps = {
+    currencyCode: string;
     technologies: LensTechnology[];
     selectedTechnologyCode: string;
     selectedColor: LensTechnologyColor;
@@ -24,6 +25,7 @@ type LensTechnologySelectorProps = {
 }
 
 export default function LensTechnologySelector({
+    currencyCode,
     technologies,
     selectedTechnologyCode,
     selectedColor,
@@ -34,6 +36,11 @@ export default function LensTechnologySelector({
 }: LensTechnologySelectorProps
 ) {
     const selectedTechnology = technologies.find((technology) => technology.code === selectedTechnologyCode)
+    const formatPrice = (amountMinor: number) =>
+        new Intl.NumberFormat(undefined, {
+            style: "currency",
+            currency: currencyCode,
+        }).format(amountMinor / 100);
 
     const colors: {
         value: LensTechnologyColor;
@@ -120,7 +127,7 @@ export default function LensTechnologySelector({
 
                                             {technology.lensPrices?.length > 0 && (
                                                 <p className="mt-5 text-sm font-semibold text-blue-600">
-                                                    From ${(technology.lensPrices[0].amountMinor / 100).toFixed(2)}
+                                                    From {formatPrice(technology.lensPrices[0].amountMinor)}
                                                 </p>
                                             )}
                                         </div>

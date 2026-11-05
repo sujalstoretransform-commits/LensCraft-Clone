@@ -324,6 +324,7 @@ export default function LensConfiguratorPage({
 
         {step === 4 && (
           <LensTypeConfigurator
+            currencyCode={currencyCode}
             lensOptions={catalog.lensOptions.filter(
               (option): option is typeof option & { category: "lens_type" } => option.category === "lens_type",
             )}
@@ -351,6 +352,7 @@ export default function LensConfiguratorPage({
 
         {step === 5 && ["light_adaptive", "sunglasses_tinted", "sunglasses_polarized"].includes(selectedLensOptionCode) && (
           <LensTechnologySelector
+            currencyCode={currencyCode}
             technologies={
               catalog.lensOptions
                 .find((option) => option.code === selectedLensOptionCode)

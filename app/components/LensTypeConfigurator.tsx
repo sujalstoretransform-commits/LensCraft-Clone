@@ -19,6 +19,7 @@ type LensOption = {
 };
 
 type LensTypeConfiguratorProps = {
+    currencyCode: string;
     lensOptions: LensOption[];
     onBack: () => void;
     onContinue: (lensOptionCode: string) => void;
@@ -26,12 +27,18 @@ type LensTypeConfiguratorProps = {
 };
 
 export default function LensTypeConfigurator({
+    currencyCode,
     lensOptions,
     onBack,
     onContinue,
     initialValue = "clear",
 }: LensTypeConfiguratorProps) {
     const [selectedType, setSelectedType] = useState(initialValue);
+    const formatPrice = (amountMinor: number) =>
+        new Intl.NumberFormat(undefined, {
+            style: "currency",
+            currency: currencyCode,
+        }).format(amountMinor / 100);
 
     return (
         <section className="w-full bg-white px-5 py-8 md:px-12">
@@ -89,7 +96,7 @@ export default function LensTypeConfigurator({
 
                                 {lens.prices.length > 0 && (
                                     <span className="mt-5 block text-sm font-semibold text-blue-600">
-                                        From ${(lens.prices[0].amountMinor / 100).toFixed(2)}
+                                        From {formatPrice(lens.prices[0].amountMinor)}
                                     </span>
                                 )}
                             </button>
