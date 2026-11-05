@@ -271,10 +271,12 @@ model prescriptionMethod {
 }
 
 model SavedPrescription {
-  id         String @id @default(cuid())
-  shop       String
-  customerId String
-  name       String
+  id             String   @id @default(cuid())
+  shop           String
+  customerId     String?
+  guestToken     String?
+  guestExpiresAt DateTime?
+  name           String
 
   rightSph  Decimal? @db.Decimal(5, 2)
   rightCyl  Decimal? @db.Decimal(5, 2)
@@ -299,4 +301,6 @@ model SavedPrescription {
 
   @@index([shop, customerId])
   @@index([shop, customerId, updatedAt])
+  @@index([shop, guestToken])
+  @@index([guestExpiresAt])
 }
