@@ -90,7 +90,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   const url = new URL(request.url);
   const customerId = url.searchParams.get("logged_in_customer_id");
-  const fileId = url.searchParams.get("fileId");
 
   let guestToken = getCookie(request, GUEST_COOKIE);
   let shouldSetCookie = false;
@@ -108,48 +107,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     headers.append("Set-Cookie", createGuestCookie(guestToken!));
   }
 
-  if (fileId) {
-    try {
-      const prescription = await getSavedPrescriptionFile({
-        id: fileId,
-        shop: session.shop,
-        ...owner,
-      });
-
-      if (!prescription?.fileKey || !prescription.fileType) {
-        return Response.json(
-          { error: "Prescription file not found" },
-          { status: 404, headers },
-        );
-      }
-
-      const blob = await get(prescription.fileKey, {
-        access: "private",
-      });
-
-      if (!blob || blob.statusCode !== 200 || !blob.stream) {
-        return Response.json(
-          { error: "Prescription file not found" },
-          { status: 404, headers },
-        );
-      }
-
-      headers.set("Content-Type", prescription.fileType);
-      headers.set("Content-Disposition", "inline");
-      headers.set("Cache-Control", "private, no-store");
-      headers.set("X-Content-Type-Options", "nosniff");
-
-      return new Response(blob.stream, { headers });
-    } catch (error) {
-      console.error("Load prescription file failed:", error);
-
-      return Response.json(
-        { error: "Unable to load prescription file" },
-        { status: 500, headers },
-      );
-    }
-  }
-
   try {
     const savedPrescriptions = await getSavedPrescriptions({
       shop: session.shop,
@@ -161,9 +118,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
         savedPrescriptions: savedPrescriptions.map(
           ({ fileKey, ...prescription }) => ({
             ...prescription,
-            fileUrl: fileKey
-              ? `${url.pathname}?fileId=${encodeURIComponent(prescription.id)}`
-              : null,
+            hasFile: Boolean(fileKey),
             rightSph: prescription.rightSph?.toString() ?? null,
             rightCyl: prescription.rightCyl?.toString() ?? null,
             leftSph: prescription.leftSph?.toString() ?? null,
@@ -209,6 +164,58 @@ export async function action({ request }: ActionFunctionArgs) {
     }
 
     const formData = await request.formData();
+
+    const intent = String(formData.get("intent") ?? "");
+
+    if (intent === "get-file") {
+      const fileId = String(formData.get("fileId") ?? "").trim();
+
+      if (!fileId) {
+        return Response.json(
+          { error: "Prescription ID is required" },
+          { status: 400 },
+        );
+      }
+
+      const owner = getPrescriptionOwner(customerId, guestToken!);
+
+      const prescription = await getSavedPrescriptionFile({
+        id: fileId,
+        shop: session.shop,
+        ...owner,
+      });
+
+      if (!prescription?.fileKey || !prescription.fileType) {
+        return Response.json(
+          { error: "Prescription file not found" },
+          { status: 404 },
+        );
+      }
+
+      const blob = await get(prescription.fileKey, {
+        access: "private",
+      });
+
+      if (!blob || blob.statusCode !== 200 || !blob.stream) {
+        return Response.json(
+          { error: "Prescription file not found" },
+          { status: 404 },
+        );
+      }
+
+      const headers = new Headers({
+        "Content-Type": prescription.fileType,
+        "Content-Disposition": "inline",
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
+      });
+
+      if (shouldSetCookie && guestToken) {
+        headers.append("Set-Cookie", createGuestCookie(guestToken));
+      }
+
+      return new Response(blob.stream, { headers });
+    }
 
     const name = String(formData.get("name") ?? "").trim();
     const rightSph = String(formData.get("rightSph") ?? "").trim();
@@ -297,9 +304,9 @@ export async function action({ request }: ActionFunctionArgs) {
       ...(customerId
         ? { customerId }
         : {
-            guestToken: guestToken!,
-            guestExpiresAt: guestExpiryDate(),
-          }),
+          guestToken: guestToken!,
+          guestExpiresAt: guestExpiryDate(),
+        }),
 
       name,
       rightSph: rightSph || null,

@@ -15,7 +15,7 @@ type SavedPrescription = {
 
     pd: string | null;
 
-    fileUrl: string | null;
+    hasFile: boolean;
     fileName: string | null;
     fileType: string | null;
 
@@ -51,55 +51,118 @@ export default function SavedPrescriptionSelector({
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [validationError, setValidationError] = useState("");
+    const [isContinuing, setIsContinuing] = useState(false);
 
-    const [selectedPrescription, setSelectedPrescription] = useState<SavedPrescription | null>(null);
+    const [selectedPrescription, setSelectedPrescription] =
+        useState<SavedPrescription | null>(null);
 
-
-    const onHandleContinue = () => {
-        if (!selectedPrescription) {
-            setValidationError("Please select a saved prescription.");
-            return
+    // Fetch prescription file through POST instead of exposing fileId in URL.
+    const fetchPrescriptionFile = async (
+        fileId: string,
+    ): Promise<string> => {
+        if (
+            !proxyPathPrefix?.startsWith("/") ||
+            proxyPathPrefix.startsWith("//")
+        ) {
+            throw new Error("Invalid Shopify app proxy path.");
         }
 
-        if (!selectedPrescription.fileUrl && requirePrescriptionImage) {
+        const endpoint = new URL(
+            `${proxyPathPrefix}/lens-saved-prescriptions`,
+            window.location.origin,
+        );
+
+        const formData = new FormData();
+        formData.append("intent", "get-file");
+        formData.append("fileId", fileId);
+
+        const response = await fetch(endpoint, {
+            method: "POST",
+            body: formData,
+            credentials: "same-origin",
+        });
+
+        if (!response.ok) {
+            throw new Error("Unable to load prescription file.");
+        }
+
+        const blob = await response.blob();
+
+        return URL.createObjectURL(blob);
+    };
+
+    // Continue with the selected prescription.
+    const onHandleContinue = async () => {
+        if (!selectedPrescription) {
+            setValidationError("Please select a saved prescription.");
+            return;
+        }
+
+        if (!selectedPrescription.hasFile && requirePrescriptionImage) {
             setValidationError(
-                "This prescription has no attached file. Please enter your prescription manually."
+                "This prescription has no attached file. Please enter your prescription manually.",
             );
             return;
         }
 
-        onContinue(
-            {
-                rightSph: selectedPrescription.rightSph ?? "",
-                rightCyl: selectedPrescription.rightCyl ?? "",
-                rightAxis: selectedPrescription.rightAxis?.toString() ?? "",
-                leftSph: selectedPrescription.leftSph ?? "",
-                leftCyl: selectedPrescription.leftCyl ?? "",
-                leftAxis: selectedPrescription.leftAxis?.toString() ?? "",
-                pd: selectedPrescription.pd ?? "",
-            },
-            undefined,
-            selectedPrescription.fileUrl ?? undefined,
-            selectedPrescription.fileName ?? undefined,
-        )
-    }
+        try {
+            setIsContinuing(true);
+            setValidationError("");
 
+            const fileUrl = selectedPrescription.hasFile
+                ? await fetchPrescriptionFile(selectedPrescription.id)
+                : undefined;
 
+            onContinue(
+                {
+                    rightSph: selectedPrescription.rightSph ?? "",
+                    rightCyl: selectedPrescription.rightCyl ?? "",
+                    rightAxis:
+                        selectedPrescription.rightAxis?.toString() ?? "",
+                    leftSph: selectedPrescription.leftSph ?? "",
+                    leftCyl: selectedPrescription.leftCyl ?? "",
+                    leftAxis:
+                        selectedPrescription.leftAxis?.toString() ?? "",
+                    pd: selectedPrescription.pd ?? "",
+                },
+                undefined,
+                fileUrl,
+                selectedPrescription.fileName ?? undefined,
+            );
+        } catch (err) {
+            setValidationError(
+                err instanceof Error
+                    ? err.message
+                    : "Unable to load prescription file.",
+            );
+        } finally {
+            setIsContinuing(false);
+        }
+    };
+
+    // Load saved prescriptions.
     useEffect(() => {
         const controller = new AbortController();
 
         async function loadPrescriptions() {
             try {
-                if (!proxyPathPrefix?.startsWith("/") || proxyPathPrefix.startsWith("//")) {
-                    throw new Error("Saved prescriptions are only available through the Shopify app proxy.");
+                if (
+                    !proxyPathPrefix?.startsWith("/") ||
+                    proxyPathPrefix.startsWith("//")
+                ) {
+                    throw new Error(
+                        "Saved prescriptions are only available through the Shopify app proxy.",
+                    );
                 }
 
                 const endpoint = new URL(
                     `${proxyPathPrefix}/lens-saved-prescriptions`,
                     window.location.origin,
                 );
+
                 const response = await fetch(endpoint, {
                     signal: controller.signal,
+                    credentials: "same-origin",
                 });
 
                 if (!response.ok) {
@@ -114,12 +177,19 @@ export default function SavedPrescriptionSelector({
                     !("savedPrescriptions" in data) ||
                     !Array.isArray(data.savedPrescriptions)
                 ) {
-                    throw new Error("Invalid saved prescriptions response.");
+                    throw new Error(
+                        "Invalid saved prescriptions response.",
+                    );
                 }
 
-                setPrescriptions(data.savedPrescriptions as SavedPrescription[]);
+                setPrescriptions(
+                    data.savedPrescriptions as SavedPrescription[],
+                );
             } catch (err) {
-                if (err instanceof Error && err.name !== "AbortError") {
+                if (
+                    err instanceof Error &&
+                    err.name !== "AbortError"
+                ) {
                     setError(err.message);
                 }
             } finally {
@@ -140,6 +210,7 @@ export default function SavedPrescriptionSelector({
                 <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
                     Choose a saved prescription
                 </h1>
+
                 <p className="mt-2 text-sm text-slate-500">
                     Select a prescription saved to your customer account.
                 </p>
@@ -161,9 +232,11 @@ export default function SavedPrescriptionSelector({
                         <p className="font-medium text-slate-900">
                             No saved prescriptions found
                         </p>
+
                         <p className="mt-2 text-sm text-slate-500">
                             Enter your prescription manually to continue.
                         </p>
+
                         <button
                             type="button"
                             onClick={onUseManual}
@@ -176,27 +249,33 @@ export default function SavedPrescriptionSelector({
 
                 <div className="mt-6 grid gap-4">
                     {prescriptions.map((prescription) => (
-                        <button
+                        <article
                             key={prescription.id}
-                            type="button"
-                            onClick={() => {
-                                setSelectedPrescription(prescription)
-                                setValidationError("")
-                                onSelectionChange()
-                            }}
-                            className={`group w-full rounded-xl border p-5 text-left transition-all duration-200 ${selectedPrescription?.id === prescription.id
-                                ? "border-blue-600 bg-blue-50"
-                                : "border-slate-200 bg-white hover:border-blue-400"
-                                }`
-                            }
+                            className={`w-full rounded-xl border p-5 transition-all duration-200 ${
+                                selectedPrescription?.id === prescription.id
+                                    ? "border-blue-600 bg-blue-50"
+                                    : "border-slate-200 bg-white"
+                            }`}
                         >
                             <div className="flex items-center justify-between">
-                                <h3 className="text-base font-semibold text-slate-900">
-                                    {prescription.name}
-                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedPrescription(prescription);
+                                        setValidationError("");
+                                        onSelectionChange();
+                                    }}
+                                    className="text-left"
+                                >
+                                    <h3 className="text-base font-semibold text-slate-900">
+                                        {prescription.name}
+                                    </h3>
+                                </button>
 
-                                <span className="text-sm font-medium text-blue-600 opacity-0 transition group-hover:opacity-100">
-                                    Select →
+                                <span className="text-sm font-medium text-blue-600">
+                                    {selectedPrescription?.id === prescription.id
+                                        ? "Selected"
+                                        : "Select →"}
                                 </span>
                             </div>
 
@@ -207,11 +286,20 @@ export default function SavedPrescriptionSelector({
                                     </p>
 
                                     <p className="mt-1.5 text-sm text-slate-500">
-                                        SPH: <span className="font-medium text-slate-700">{prescription.rightSph ?? "—"}</span>
+                                        SPH:{" "}
+                                        <span className="font-medium text-slate-700">
+                                            {prescription.rightSph ?? "—"}
+                                        </span>
                                         {" · "}
-                                        CYL: <span className="font-medium text-slate-700">{prescription.rightCyl ?? "—"}</span>
+                                        CYL:{" "}
+                                        <span className="font-medium text-slate-700">
+                                            {prescription.rightCyl ?? "—"}
+                                        </span>
                                         {" · "}
-                                        Axis: <span className="font-medium text-slate-700">{prescription.rightAxis ?? "—"}</span>
+                                        Axis:{" "}
+                                        <span className="font-medium text-slate-700">
+                                            {prescription.rightAxis ?? "—"}
+                                        </span>
                                     </p>
                                 </div>
 
@@ -221,42 +309,90 @@ export default function SavedPrescriptionSelector({
                                     </p>
 
                                     <p className="mt-1.5 text-sm text-slate-500">
-                                        SPH: <span className="font-medium text-slate-700">{prescription.leftSph ?? "—"}</span>
+                                        SPH:{" "}
+                                        <span className="font-medium text-slate-700">
+                                            {prescription.leftSph ?? "—"}
+                                        </span>
                                         {" · "}
-                                        CYL: <span className="font-medium text-slate-700">{prescription.leftCyl ?? "—"}</span>
+                                        CYL:{" "}
+                                        <span className="font-medium text-slate-700">
+                                            {prescription.leftCyl ?? "—"}
+                                        </span>
                                         {" · "}
-                                        Axis: <span className="font-medium text-slate-700">{prescription.leftAxis ?? "—"}</span>
+                                        Axis:{" "}
+                                        <span className="font-medium text-slate-700">
+                                            {prescription.leftAxis ?? "—"}
+                                        </span>
                                     </p>
                                 </div>
                             </div>
 
                             <p className="mt-4 text-sm text-slate-500">
-                                PD: <span className="font-semibold text-slate-800">{prescription.pd ?? "—"} mm</span>
+                                PD:{" "}
+                                <span className="font-semibold text-slate-800">
+                                    {prescription.pd ?? "—"} mm
+                                </span>
                             </p>
 
-                            {prescription.fileUrl && (
+                            {prescription.hasFile && (
                                 <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
                                     <p className="text-sm font-semibold text-slate-800">
                                         Attached prescription
                                     </p>
 
-                                    <a
-                                        href={prescription.fileUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={(event) => event.stopPropagation}
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            const previewWindow = window.open(
+                                                "about:blank",
+                                                "_blank",
+                                            );
+
+                                            if (!previewWindow) {
+                                                setValidationError(
+                                                    "Please allow pop-ups to view your prescription.",
+                                                );
+                                                return;
+                                            }
+
+                                            try {
+                                                const fileUrl =
+                                                    await fetchPrescriptionFile(
+                                                        prescription.id,
+                                                    );
+
+                                                previewWindow.opener = null;
+                                                previewWindow.location.href =
+                                                    fileUrl;
+                                            } catch {
+                                                previewWindow.close();
+                                                setValidationError(
+                                                    "Unable to open prescription file.",
+                                                );
+                                            }
+                                        }}
                                         className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700"
                                     >
-                                        View {prescription.fileName || "prescription file"}
+                                        View{" "}
+                                        {prescription.fileName ||
+                                            "prescription file"}
                                         <span aria-hidden="true">↗</span>
-                                    </a>
+                                    </button>
                                 </div>
                             )}
 
-                            <p className="mt-4 text-sm font-semibold text-blue-600 transition group-hover:text-blue-700">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setSelectedPrescription(prescription);
+                                    setValidationError("");
+                                    onSelectionChange();
+                                }}
+                                className="mt-4 text-sm font-semibold text-blue-600 transition hover:text-blue-700"
+                            >
                                 Use this prescription →
-                            </p>
-                        </button>
+                            </button>
+                        </article>
                     ))}
                 </div>
 
@@ -271,12 +407,19 @@ export default function SavedPrescriptionSelector({
                 )}
 
                 {validationError && (
-                    <p role="alert" className="mt-4 text-sm font-medium text-red-600">
+                    <p
+                        role="alert"
+                        className="mt-4 text-sm font-medium text-red-600"
+                    >
                         {validationError}
                     </p>
                 )}
+
                 {errors.length > 0 && (
-                    <ul role="alert" className="mt-4 space-y-1 text-sm font-medium text-red-600">
+                    <ul
+                        role="alert"
+                        className="mt-4 space-y-1 text-sm font-medium text-red-600"
+                    >
                         {errors.map((message) => (
                             <li key={message}>{message}</li>
                         ))}
@@ -296,9 +439,10 @@ export default function SavedPrescriptionSelector({
                 <button
                     type="button"
                     onClick={onHandleContinue}
-                    className="rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700"
+                    disabled={isContinuing}
+                    className="rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                    Continue
+                    {isContinuing ? "Loading..." : "Continue"}
                 </button>
             </div>
         </section>
