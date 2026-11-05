@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "694837c36cee3cd1802aa50b11788cfb"
-application_url = "https://example.com"
+application_url = "https://lenscraftclone.vercel.app"
 embedded = true
 name = "LensCraft Clone"
 
@@ -45,12 +45,12 @@ api_version = "2027-01"
   topics = [ "app/scopes_update" ]
 
 [auth]
-redirect_urls = [ "https://example.com/api/auth" ]
+redirect_urls = [ "https://lenscraftclone.vercel.app/auth/callback" ]
 
 [build]
 automatically_update_urls_on_dev = true
 
 [app_proxy]
-url = "/apps/lenscraftclone"
+url = "https://lenscraftclone.vercel.app/apps/lenscraftclone"
 prefix = "apps"
 subpath = "lenscraftclone"
