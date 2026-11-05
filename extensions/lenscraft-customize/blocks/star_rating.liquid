@@ -44,8 +44,6 @@
 
   <script>
     (() => {
-      // const CONFIGURATOR_URL = 'https://lens-craft-five.vercel.app/configurator';
-
       const block = document.currentScript?.closest('.shopify-section')?.querySelector('.lenscraft-customize');
 
       if (!block) return;
@@ -93,8 +91,7 @@
             framePrice: String(variant.price),
           });
 
-          // window.location.href = `${CONFIGURATOR_URL}?${params.toString()}`;
-          window.location.href = `/apps/lenscraftdev?${params.toString()}`;
+          window.location.href = `/apps/lenscraftclone?${params.toString()}`;
         } catch (error) {
           console.error('LensCraft variant lookup failed:', error);
           alert('Unable to load the selected frame. Please try again.');
@@ -106,7 +103,7 @@
 
 {% schema %}
 {
-  "name": "Customize Lens",
+  "name": "Customize Lens Clone",
   "target": "section",
   "settings": [
     {

@@ -8,7 +8,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return loadLensConfiguratorPage(request);
 }
 
-export default function AppProxyDevPage() {
+export default function AppProxyClonePage() {
   const data = useLoaderData<typeof loader>();
   return <LensConfiguratorPage data={data} />;
 }

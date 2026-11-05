@@ -6,7 +6,7 @@ import { authenticate } from "../shopify.server";
 import "@shopify/app-bridge-react";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  // Storefront request coming through the app proxy (/apps/lenscraft).
+  // Storefront request coming through the app proxy (/apps/lenscraftclone).
   // Shopify adds a `signature` param, so verify it instead of using Admin auth.
   if (new URL(request.url).searchParams.has("signature")) {
     await authenticate.public.appProxy(request);

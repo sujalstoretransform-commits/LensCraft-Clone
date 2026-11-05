@@ -1,7 +1,7 @@
 export {
   action,
   loader,
-} from "./apps.lenscraftdev.lens-saved-prescriptions";
+} from "./apps.lenscraftclone.lens-saved-prescriptions";
 
 export default function SavedPrescriptionsProxyRoute() {
   return null;

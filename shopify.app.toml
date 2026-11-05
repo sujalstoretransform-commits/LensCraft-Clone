@@ -1,9 +1,9 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "2e9af514b9f856455cc71143ae2332e0"
-application_url = "https://lens-craft-five.vercel.app"
+client_id = "694837c36cee3cd1802aa50b11788cfb"
+application_url = "https://example.com"
 embedded = true
-name = "LensCraft"
+name = "LensCraft Clone"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
@@ -45,12 +45,12 @@ api_version = "2027-01"
   topics = [ "app/scopes_update" ]
 
 [auth]
-redirect_urls = [ "https://lens-craft-five.vercel.app/auth/callback" ]
+redirect_urls = [ "https://example.com/api/auth" ]
 
 [build]
 automatically_update_urls_on_dev = true
 
 [app_proxy]
-url = "https://lens-craft-five.vercel.app/apps/lenscraft"
+url = "/apps/lenscraftclone"
 prefix = "apps"
-subpath = "lenscraft"
+subpath = "lenscraftclone"
