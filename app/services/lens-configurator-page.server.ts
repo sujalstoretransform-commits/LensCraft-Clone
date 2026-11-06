@@ -1,6 +1,12 @@
 import { authenticate } from "../shopify.server";
 import { loadLensCatalog } from "./lens-catalog.server";
 
+const getGraphqlErrors = (body: unknown) => {
+  if (typeof body !== "object" || body === null) return [];
+  const errors = "errors" in body ? body.errors : undefined;
+  return Array.isArray(errors) ? errors : [];
+};
+
 const safeImageUrl = (raw: string | null): string | null => {
   if (!raw) return null;
 
@@ -22,10 +28,15 @@ const safeImageUrl = (raw: string | null): string | null => {
 export async function loadLensConfiguratorPage(
   request: Request,
   frameSelection?: { productId: string; variantId: string },
+  authMode: "appProxy" | "admin" = new URL(request.url).searchParams.has(
+    "signature",
+  )
+    ? "appProxy"
+    : "admin",
 ) {
   const url = new URL(request.url);
 
-  const { admin } = url.searchParams.has("signature")
+  const { admin } = authMode === "appProxy"
     ? await authenticate.public.appProxy(request)
     : await authenticate.admin(request);
 
@@ -38,18 +49,30 @@ export async function loadLensConfiguratorPage(
     );
   }
 
-  const currencyResponse = await admin.graphql(`#graphql
-    query StoreCurrency {
-      shop {
-        currencyCode
-      }
-    }`);
-  const currencyJson = await currencyResponse.json();
+  let currencyResponse: Awaited<ReturnType<typeof admin.graphql>>;
+  let currencyJson: Awaited<ReturnType<typeof currencyResponse.json>>;
+  try {
+    currencyResponse = await admin.graphql(`#graphql
+      query StoreCurrency {
+        shop {
+          currencyCode
+        }
+      }`);
+    currencyJson = await currencyResponse.json();
+  } catch (error) {
+    console.error("Shop currency lookup failed:", error);
+    throw new Response(
+      "Unable to load this store's currency. Please try again or contact support.",
+      { status: 502 },
+    );
+  }
 
-  if (!currencyResponse.ok) {
+  const currencyErrors = getGraphqlErrors(currencyJson);
+  if (!currencyResponse.ok || currencyErrors.length > 0) {
     console.error(
       "Shop currency lookup failed with HTTP status:",
       currencyResponse.status,
+      currencyErrors,
     );
     throw new Response(
       "Unable to load this store's currency. Please try again or contact support.",
@@ -66,22 +89,13 @@ export async function loadLensConfiguratorPage(
     );
   }
 
-  const catalog = await loadLensCatalog(currencyCode);
-  const hasCurrencyPrices =
-    catalog.lensTypes.some((lensType) => lensType.prices.length > 0) ||
-    catalog.lensIndices.some((lensIndex) => lensIndex.prices.length > 0) ||
-    catalog.lensOptions.some(
-      (option) =>
-        option.prices.length > 0 ||
-        option.lensTechnologyOptions.some(
-          (mapping) => mapping.lensTechnology.lensPrices.length > 0,
-        ),
-    );
-
-  if (!hasCurrencyPrices) {
-    console.error(`No active lens catalog prices found for ${currencyCode}.`);
+  let catalog: Awaited<ReturnType<typeof loadLensCatalog>>;
+  try {
+    catalog = await loadLensCatalog(currencyCode);
+  } catch (error) {
+    console.error("Lens catalog lookup failed:", error);
     throw new Response(
-      `No active lens prices are configured for this store's ${currencyCode} currency. Please contact the store.`,
+      "Unable to load lens options right now. Please try again or contact the store.",
       { status: 503 },
     );
   }
@@ -97,33 +111,46 @@ export async function loadLensConfiguratorPage(
   if (frameSelection) {
     const productGid = `gid://shopify/Product/${frameSelection.productId}`;
     const variantGid = `gid://shopify/ProductVariant/${frameSelection.variantId}`;
-    const frameResponse = await admin.graphql(
-      `#graphql
-      query LensFrameSelection($variantId: ID!) {
-        productVariant(id: $variantId) {
-          id
-          title
-          price
-          image {
-            url
-          }
-          product {
+    let frameResponse: Awaited<ReturnType<typeof admin.graphql>>;
+    let frameJson: Awaited<ReturnType<typeof frameResponse.json>>;
+    try {
+      frameResponse = await admin.graphql(
+        `#graphql
+        query LensFrameSelection($variantId: ID!) {
+          productVariant(id: $variantId) {
             id
-            featuredImage {
+            title
+            price
+            image {
               url
             }
+            product {
+              id
+              featuredImage {
+                url
+              }
+            }
           }
-        }
-      }`,
-      { variables: { variantId: variantGid } },
-    );
-    const frameJson = await frameResponse.json();
-    const variant = frameJson.data?.productVariant;
+        }`,
+        { variables: { variantId: variantGid } },
+      );
+      frameJson = await frameResponse.json();
+    } catch (error) {
+      console.error("Selected frame lookup failed:", error);
+      throw new Response(
+        "Unable to load the selected frame from Shopify. Please try again.",
+        { status: 502 },
+      );
+    }
 
-    if (!frameResponse.ok) {
+    const variant = frameJson.data?.productVariant;
+    const frameErrors = getGraphqlErrors(frameJson);
+
+    if (!frameResponse.ok || frameErrors.length > 0) {
       console.error(
         "Selected frame lookup failed with HTTP status:",
         frameResponse.status,
+        frameErrors,
       );
       throw new Response(
         "Unable to load the selected frame from Shopify. Please try again.",
@@ -131,7 +158,11 @@ export async function loadLensConfiguratorPage(
       );
     }
 
-    if (!variant || variant.product.id !== productGid || variant.id !== variantGid) {
+    if (
+      !variant ||
+      variant.product?.id !== productGid ||
+      variant.id !== variantGid
+    ) {
       throw new Response(
         "The selected frame variant could not be verified. Please select it again.",
         { status: 400 },
@@ -166,21 +197,36 @@ export async function loadLensConfiguratorPage(
   const lensVariantByMinor: Record<number, string> = {};
 
   if (admin) {
-    const res = await admin.graphql(`#graphql
-      query {
-        productByIdentifier(identifier: { handle: "lens-upgrade" }) {
-          variants(first: 100) {
-            nodes { id price }
+    try {
+      const res = await admin.graphql(`#graphql
+        query {
+          productByIdentifier(identifier: { handle: "lens-upgrade" }) {
+            variants(first: 100) {
+              nodes { id price }
+            }
+          }
+        }`);
+
+      const json = await res.json();
+      const queryErrors = getGraphqlErrors(json);
+
+      if (!res.ok || queryErrors.length > 0) {
+        console.error(
+          "Lens upgrade product lookup failed with HTTP status:",
+          res.status,
+          queryErrors,
+        );
+      } else {
+        for (const variant of json.data?.productByIdentifier?.variants?.nodes ?? []) {
+          const priceMinor = Math.round(Number(variant.price) * 100);
+          const variantId = variant.id.split("/").pop();
+          if (Number.isFinite(priceMinor) && variantId) {
+            lensVariantByMinor[priceMinor] = variantId;
           }
         }
-      }`);
-
-    const json = await res.json();
-
-    for (const v of json.data?.productByIdentifier?.variants?.nodes ?? []) {
-      lensVariantByMinor[Math.round(Number(v.price) * 100)] = v.id
-        .split("/")
-        .pop()!;
+      }
+    } catch (error) {
+      console.error("Lens upgrade product lookup failed:", error);
     }
   }
 

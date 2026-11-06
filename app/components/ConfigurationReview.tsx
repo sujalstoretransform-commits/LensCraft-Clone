@@ -2,7 +2,6 @@ import { useState } from "react";
 import type { PrescriptionData } from "./PrescriptionForm";
 
 type ConfigurationReviewProps = {
-  shop: string,
   lensTypeName: string;
   lensOptionName: string;
   lensIndexName: string;
@@ -29,7 +28,6 @@ type ConfigurationReviewProps = {
 };
 
 export default function ConfigurationReview({
-  shop,
   lensTypeName,
   lensOptionName,
   lensIndexName,

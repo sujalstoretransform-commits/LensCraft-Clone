@@ -16,15 +16,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         );
     }
 
-    const catalog = await loadLensCatalog(currency.toUpperCase())
-
     try {
+        const catalog = await loadLensCatalog(currency.toUpperCase())
         const price = calculatePrice(catalog, selection, framePriceMinor)
         return Response.json({ currency: currency.toUpperCase(), ...price })
     } catch (e) {
         if (e instanceof PriceError) {
             return Response.json({ error: e.message }, { status: 400 });
         }
-        throw e;
+        console.error("Lens price calculation failed:", e);
+        return Response.json(
+            { error: "Lens pricing is temporarily unavailable." },
+            { status: 503 },
+        );
     }
 }

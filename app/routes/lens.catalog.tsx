@@ -11,5 +11,13 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         );
     }
 
-    return Response.json(await loadLensCatalog(currency))
+    try {
+        return Response.json(await loadLensCatalog(currency))
+    } catch (error) {
+        console.error("Lens catalog API lookup failed:", error);
+        return Response.json(
+            { error: "Lens catalog is temporarily unavailable." },
+            { status: 503 },
+        );
+    }
 }

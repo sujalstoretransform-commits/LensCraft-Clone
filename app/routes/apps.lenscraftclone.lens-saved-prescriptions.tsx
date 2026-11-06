@@ -133,8 +133,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     console.error("Load saved prescriptions failed:", error);
 
     return Response.json(
-      { error: "Unable to load saved prescriptions" },
-      { status: 500, headers },
+      { error: "Saved prescriptions are temporarily unavailable." },
+      { status: 503, headers },
     );
   }
 }
@@ -337,8 +337,6 @@ export async function action({ request }: ActionFunctionArgs) {
       { status: 201, headers },
     );
   } catch (error) {
-    console.error("Save prescription failed:", error);
-
     // Remove the uploaded file if database saving fails.
     if (uploadedPathname) {
       try {
@@ -351,9 +349,12 @@ export async function action({ request }: ActionFunctionArgs) {
       }
     }
 
+    if (error instanceof Response) throw error;
+
+    console.error("Save prescription failed:", error);
     return Response.json(
-      { error: "Unable to save prescription" },
-      { status: 500 },
+      { error: "Prescription storage is temporarily unavailable." },
+      { status: 503 },
     );
   }
 }

@@ -8,10 +8,10 @@ import SelectedFrame from "./SelectedFrame";
 import SingleVisionConfigurator from "./SingleVisionConfigurator";
 import ConfigurationReview from "./ConfigurationReview";
 import { validatePrescription, type Prescription, } from "app/services/prescription";
-import { calculatePrice, PriceError } from "app/services/lens-pricing";
+import { calculatePrice } from "app/services/lens-pricing";
 import PrescriptionSelection, { type PrescriptionMethodCode } from "./PrescriptionSelection";
 import CoatingReview, { type CoatingSelection } from "./CoatingReview";
-import LensTechnologySelector, { type LensTechnologyColor, } from "./LensTechnologySelector";
+import LensTechnologySelector from "./LensTechnologySelector";
 import SavedPrescriptionSelector from "./SavedPrescriptionSelector";
 import PrescriptionUpload from "./PrescriptionUpload";
 
@@ -26,27 +26,12 @@ type PriceResult = {
   totalMinor: number;
 };
 
-type SavedPrescription = {
-  id: string;
-  name: string;
-  rightSph: string | null;
-  rightCyl: string | null;
-  rightAxis: number | null;
-  leftSph: string | null;
-  leftCyl: string | null;
-  leftAxis: number | null;
-  pd: string | null;
-  prescribedAt: string | null;
-  expiresAt: string | null;
-};
-
 export default function LensConfiguratorPage({
   data,
 }: {
   data: LensConfiguratorPageData;
 }) {
   const {
-    shop,
     currencyCode,
     framePriceMinor,
     product,
@@ -72,7 +57,6 @@ export default function LensConfiguratorPage({
   const [selectedLensOptionCode, setSelectedLensOptionCode] = useState("clear");
   const [priceResult, setPriceResult] = useState<PriceResult | null>(null);
   const [priceError, setPriceError] = useState("");
-  const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
   const [prescriptionMethod, setPrescriptionMethod] = useState<PrescriptionMethodCode | null>(null);
   const [coatingSelection, setCoatingSelection] = useState<CoatingSelection>([]);
 
@@ -170,8 +154,7 @@ export default function LensConfiguratorPage({
   const calculateSelectedPrice = (
     lensIndexCode: string,
     optionCodes: string[],
-  ) => {
-    setIsCalculatingPrice(true);
+  ): boolean => {
     setPriceError("");
 
     try {
@@ -188,12 +171,13 @@ export default function LensConfiguratorPage({
 
       setPriceResult(pricing);
       setPriceError("");
+      return true;
     } catch (error) {
+      setPriceResult(null);
       setPriceError(
         error instanceof Error ? error.message : "Unable to calculate price.",
       );
-    } finally {
-      setIsCalculatingPrice(false);
+      return false;
     }
   };
 
@@ -233,6 +217,7 @@ export default function LensConfiguratorPage({
       <div className="w-full">
         {step === 1 && (
           <LensTypeSelector
+            currencyCode={currencyCode}
             selectedLensTypeCode={selectedVisionTypeCode}
             lensTypes={lensTypesWithPrices}
             onSelectLensType={(lensType) => {
@@ -374,7 +359,7 @@ export default function LensConfiguratorPage({
           />
         )}
 
-        {step === 5 && priceError && (
+        {(step === 5 || step === 7) && priceError && (
           <p role="alert" className="px-5 text-sm text-red-600 md:px-12">
             {priceError}
           </p>
@@ -429,18 +414,17 @@ export default function LensConfiguratorPage({
 
               setSelectedCoatings(coatingNames)
 
-              calculateSelectedPrice(
+              const priceAvailable = calculateSelectedPrice(
                 selectedLensIndex.code,
                 optionCodes,
-              )
-              setStep(8)
+              );
+              if (priceAvailable) setStep(8);
             }}
           />
         )}
 
         {step === 8 && (prescriptionMethod === "upload" || (selectedLensIndex && prescriptionValues)) && (
           <ConfigurationReview
-            shop={shop}
             lensTypeName={selectedLensTypeName}
             lensOptionName={selectedLensOptionName}
             lensIndexName={selectedLensIndex?.displayName ?? ""}

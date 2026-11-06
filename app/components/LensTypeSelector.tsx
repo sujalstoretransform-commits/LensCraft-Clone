@@ -13,6 +13,7 @@ type LensType = {
 };
 
 type LensTypeSelectorProps = {
+    currencyCode: string;
     selectedLensTypeCode: string;
     lensTypes: LensType[];
     onSelectLensType: (lensTypeCode: string) => void;
@@ -29,6 +30,7 @@ const lensImages: Record<string, string> = {
 };
 
 export default function LensTypeSelector({
+    currencyCode,
     selectedLensTypeCode,
     lensTypes,
     onSelectLensType,
@@ -92,14 +94,14 @@ export default function LensTypeSelector({
                                 {lens.description}
                             </span>
 
-                            <span className="mt-5 text-sm font-semibold text-blue-600">
-                                {lens.startingPrice !== null
-                                    ? `From ${new Intl.NumberFormat("en-US", {
+                            {lens.startingPrice !== null && (
+                                <span className="mt-5 text-sm font-semibold text-blue-600">
+                                    From {new Intl.NumberFormat(undefined, {
                                         style: "currency",
-                                        currency: "USD",
-                                    }).format(lens.startingPrice / 100)}`
-                                    : "Price unavailable"}
-                            </span>
+                                        currency: currencyCode,
+                                    }).format(lens.startingPrice / 100)}
+                                </span>
+                            )}
                         </button>
                     );
                 })}

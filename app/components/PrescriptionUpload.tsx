@@ -122,26 +122,27 @@ export default function PrescriptionUpload({
                     </p>
                 </div>
 
-                <div
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,.pdf"
+                    className="hidden"
+                    onChange={(event) => {
+                        handleFileChange(event.target.files?.[0]);
+                        event.target.value = "";
+                    }}
+                />
+
+                <button
+                    type="button"
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={(event) => {
                         event.preventDefault();
                         handleFileChange(event.dataTransfer.files[0])
                     }}
                     onClick={() => fileInputRef.current?.click()}
-                    className="cursor-pointer rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center transition hover:border-slate-500"
+                    className="w-full cursor-pointer rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center transition hover:border-slate-500"
                 >
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.webp,.pdf"
-                        className="hidden"
-                        onChange={(event) => {
-                            handleFileChange(event.target.files?.[0]);
-                            event.target.value = "";
-                        }}
-                    />
-
                     <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white text-2xl shadow-sm">
                         ↑
                     </div>
@@ -153,7 +154,7 @@ export default function PrescriptionUpload({
                     <p className="mt-2 text-xs text-slate-500">
                         JPG, PNG, WEBP or PDF · Maximum 5MB
                     </p>
-                </div>
+                </button>
 
                 {file && (
                     <div className="mt-5 flex items-center justify-between rounded-lg border border-slate-200 p-4">

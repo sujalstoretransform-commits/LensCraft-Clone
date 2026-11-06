@@ -16,6 +16,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         );
     }
 
-    const { rules } = await loadLensCatalog(currency.toUpperCase())
-    return Response.json(checkRules(rules, selection))
+    try {
+        const { rules } = await loadLensCatalog(currency.toUpperCase())
+        return Response.json(checkRules(rules, selection))
+    } catch (error) {
+        console.error("Lens compatibility lookup failed:", error);
+        return Response.json(
+            { error: "Lens compatibility is temporarily unavailable." },
+            { status: 503 },
+        );
+    }
 }
