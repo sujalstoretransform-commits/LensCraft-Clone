@@ -1,5 +1,6 @@
 import { Check, ShieldCheck } from "lucide-react";
 import { useState } from "react";
+import { formatMinorUnits } from "app/utils/currency";
 
 export type CoatingSelection = string[];
 
@@ -81,10 +82,7 @@ export default function CoatingReview({
             return null;
         }
 
-        return new Intl.NumberFormat("en-US", {
-            style: "currency",
-            currency: price.currencyCode,
-        }).format(price.amountMinor / 100);
+        return formatMinorUnits(price.amountMinor, price.currencyCode);
     }
 
     return (

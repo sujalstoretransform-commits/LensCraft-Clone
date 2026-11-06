@@ -1,3 +1,5 @@
+import { formatMinorUnits } from "app/utils/currency";
+
 export type LensTechnology = {
     id: string,
     code: string;
@@ -37,10 +39,7 @@ export default function LensTechnologySelector({
 ) {
     const selectedTechnology = technologies.find((technology) => technology.code === selectedTechnologyCode)
     const formatPrice = (amountMinor: number) =>
-        new Intl.NumberFormat(undefined, {
-            style: "currency",
-            currency: currencyCode,
-        }).format(amountMinor / 100);
+        formatMinorUnits(amountMinor, currencyCode);
 
     const colors: {
         value: LensTechnologyColor;

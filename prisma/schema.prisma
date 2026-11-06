@@ -27,6 +27,29 @@ model Session {
   refreshTokenExpires DateTime?
 }
 
+model ExchangeRateCache {
+  currencyCode      String   @id @db.VarChar(3)
+  usdRate           Decimal  @db.Decimal(30, 18)
+  fetchedAt         DateTime
+  providerTimestamp DateTime
+  updatedAt         DateTime @updatedAt
+}
+
+model ShopLensVariantMapping {
+  id                String   @id @default(cuid())
+  shop              String
+  lensPriceCode     String
+  productGid        String
+  variantGid        String
+  currencyCode      String   @db.VarChar(3)
+  syncedAmountMinor Int
+  syncedAt          DateTime @default(now())
+
+  @@unique([shop, lensPriceCode])
+  @@unique([shop, variantGid])
+  @@index([shop, productGid])
+}
+
 enum LensFamily {
   clear
   blue_light

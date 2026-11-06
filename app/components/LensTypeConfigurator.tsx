@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatMinorUnits } from "app/utils/currency";
 
 type LensOption = {
     code: string;
@@ -35,10 +36,7 @@ export default function LensTypeConfigurator({
 }: LensTypeConfiguratorProps) {
     const [selectedType, setSelectedType] = useState(initialValue);
     const formatPrice = (amountMinor: number) =>
-        new Intl.NumberFormat(undefined, {
-            style: "currency",
-            currency: currencyCode,
-        }).format(amountMinor / 100);
+        formatMinorUnits(amountMinor, currencyCode);
 
     return (
         <section className="w-full bg-white px-5 py-8 md:px-12">

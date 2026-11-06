@@ -128,6 +128,16 @@ When you're ready to set up your app in production, you can follow [our deployme
 
 When you reach the step for [setting up environment variables](https://shopify.dev/docs/apps/deployment/web#set-env-vars), you also need to set the variable `NODE_ENV=production`.
 
+### Lens price currency conversion
+
+Lens catalog prices remain stored in USD. For non-USD Shopify base currencies, the app fetches USD exchange rates from [Open Exchange Rates](https://docs.openexchangerates.org/reference/latest-json) using the server-only `OPEN_EXCHANGE_RATES_APP_ID` secret. Configure this variable in each deployment environment; never expose it to storefront JavaScript.
+
+Rates are cached in PostgreSQL for six hours. If a refresh fails, a cached rate may be used for up to 72 hours after the provider's published timestamp. Without a valid rate inside that limit, converted prices and checkout are unavailable. USD always uses a fixed 1:1 rate. Shopify Markets conversion from the store's base currency to customer presentment currency remains Shopify-managed.
+
+Apply the Prisma migration during deployment with `npx prisma migrate deploy` (or the existing `npm run setup` command where appropriate).
+
+Shop-specific lens variant synchronization requires `read_products` and `write_products`. Each active USD master price must have one matching variant on the store's existing `lens-upgrade` product, with that variant's SKU set to the exact `LensPrice.code`. The app updates only those matched variant prices and never creates products or variants. Stores without complete, unique SKU mappings remain usable for configuration and price display, but checkout stays disabled until synchronization succeeds. After changing scopes, redeploy the app and have merchants approve the updated permissions.
+
 ## Gotchas / Troubleshooting
 
 ### Database tables don't exist

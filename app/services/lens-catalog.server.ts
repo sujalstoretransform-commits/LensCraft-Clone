@@ -1,7 +1,35 @@
 import prisma from "../db.server";
 import type { PrescriptionMethodCode } from "../components/PrescriptionSelection";
+import {
+    CurrencyRateUnavailableError,
+    getUsdExchangeRate,
+} from "./currency-cache.server";
+import { convertUsdMinorToCurrencyMinor } from "./currency-conversion.server";
+import { getCurrencyMinorUnitDigits } from "app/utils/currency";
 
 export const LENS_CURRENCY_CODE = "USD";
+
+type CatalogPrice = {
+    amountMinor: number;
+    currencyCode: string;
+};
+
+const convertPrices = <T extends CatalogPrice>(
+    prices: T[],
+    currencyCode: string,
+    rate: string | null,
+): T[] => {
+    if (rate === null) return [];
+    return prices.map((price) => ({
+        ...price,
+        amountMinor: convertUsdMinorToCurrencyMinor(
+            price.amountMinor,
+            rate,
+            currencyCode,
+        ),
+        currencyCode,
+    }));
+};
 
 const priceFields = {
     code: true,
@@ -230,6 +258,7 @@ const getPrescriptionMethods = async () => {
 
 
 export const loadLensCatalog = async (currencyCode = LENS_CURRENCY_CODE) => {
+    const targetCurrencyCode = currencyCode.toUpperCase();
     const [
         lensTypes,
         lensIndices,
@@ -240,23 +269,71 @@ export const loadLensCatalog = async (currencyCode = LENS_CURRENCY_CODE) => {
         lensTechnologyIndexCompatibility,
         prescriptionMethods,
     ] = await Promise.all([
-        getLensTypes(currencyCode),
-        getLensIndices(currencyCode),
-        getLensOptions(currencyCode),
+        getLensTypes(LENS_CURRENCY_CODE),
+        getLensIndices(LENS_CURRENCY_CODE),
+        getLensOptions(LENS_CURRENCY_CODE),
         getRules(),
         getLensIndexCompatibilities(),
-        getLensTechnologies(currencyCode),
+        getLensTechnologies(LENS_CURRENCY_CODE),
         getLensTechnologyIndexCompatibility(),
         getPrescriptionMethods(),
     ]);
 
+    let rate: string | null = null;
+    try {
+        getCurrencyMinorUnitDigits(targetCurrencyCode);
+        rate = (await getUsdExchangeRate(targetCurrencyCode)).rate;
+    } catch (error) {
+        if (
+            error instanceof CurrencyRateUnavailableError ||
+            error instanceof RangeError
+        ) {
+            console.warn(
+                `Lens pricing is unavailable for ${targetCurrencyCode}; the configurator will remain available without prices.`,
+            );
+        } else {
+            throw error;
+        }
+    }
+
     return {
-        lensTypes,
-        lensIndices,
-        lensOptions,
+        currencyCode: targetCurrencyCode,
+        pricingAvailable: rate !== null,
+        lensTypes: lensTypes.map((lensType) => ({
+            ...lensType,
+            prices: convertPrices(lensType.prices, targetCurrencyCode, rate),
+        })),
+        lensIndices: lensIndices.map((lensIndex) => ({
+            ...lensIndex,
+            prices: convertPrices(lensIndex.prices, targetCurrencyCode, rate),
+        })),
+        lensOptions: lensOptions.map((lensOption) => ({
+            ...lensOption,
+            prices: convertPrices(lensOption.prices, targetCurrencyCode, rate),
+            lensTechnologyOptions: lensOption.lensTechnologyOptions.map(
+                (mapping) => ({
+                    ...mapping,
+                    lensTechnology: {
+                        ...mapping.lensTechnology,
+                        lensPrices: convertPrices(
+                            mapping.lensTechnology.lensPrices,
+                            targetCurrencyCode,
+                            rate,
+                        ),
+                    },
+                }),
+            ),
+        })),
         rules,
         lensIndexCompatibilities,
-        lensTechnologies,
+        lensTechnologies: lensTechnologies.map((technology) => ({
+            ...technology,
+            lensPrices: convertPrices(
+                technology.lensPrices,
+                targetCurrencyCode,
+                rate,
+            ),
+        })),
         lensTechnologyIndexCompatibility,
         prescriptionMethods,
     };

@@ -1,3 +1,5 @@
+import { formatMinorUnits } from "app/utils/currency";
+
 type SingleVisionConfiguratorProps = {
     currencyCode: string;
     lensIndices: {
@@ -48,10 +50,7 @@ export default function SingleVisionConfigurator({
     const selectedIndex = availableIndices.find((index) => index.code === selectedIndexCode)
 
     const formatPrice = (amountMinor: number) =>
-        new Intl.NumberFormat(undefined, {
-            style: "currency",
-            currency: currencyCode,
-        }).format(amountMinor / 100);
+        formatMinorUnits(amountMinor, currencyCode);
 
     return (
         <section className="w-full bg-white px-5 py-8 md:px-12">

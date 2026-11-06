@@ -1,5 +1,7 @@
 import { authenticate } from "../shopify.server";
 import { loadLensCatalog } from "./lens-catalog.server";
+import { parseMajorToMinorUnits } from "app/utils/currency";
+import { syncShopLensPricing } from "./shopify-lens-pricing.server";
 
 const getGraphqlErrors = (body: unknown) => {
   if (typeof body !== "object" || body === null) return [];
@@ -36,13 +38,13 @@ export async function loadLensConfiguratorPage(
 ) {
   const url = new URL(request.url);
 
-  const { admin } = authMode === "appProxy"
+  const { admin, session } = authMode === "appProxy"
     ? await authenticate.public.appProxy(request)
     : await authenticate.admin(request);
 
-  const shop = url.searchParams.get("shop") ?? "";
+  const shop = session?.shop ?? "";
 
-  if (!admin) {
+  if (!admin || !shop) {
     throw new Response(
       "Unable to verify this store's currency. Please refresh the page or contact support.",
       { status: 503 },
@@ -89,11 +91,7 @@ export async function loadLensConfiguratorPage(
     );
   }
 
-  const presentmentCurrencyCode = url.searchParams.get("currency");
-  const currencyCode =
-    presentmentCurrencyCode && /^[A-Z]{3}$/i.test(presentmentCurrencyCode)
-      ? presentmentCurrencyCode.toUpperCase()
-      : storeCurrencyCode;
+  const currencyCode = storeCurrencyCode;
   let catalog: Awaited<ReturnType<typeof loadLensCatalog>>;
   try {
     catalog = await loadLensCatalog(currencyCode);
@@ -191,7 +189,18 @@ export async function loadLensConfiguratorPage(
         variant.image?.url ?? variant.product.featuredImage?.url ?? null,
       ),
     };
-    framePriceMinor = Math.round(parsedFramePrice * 100);
+    try {
+      framePriceMinor = parseMajorToMinorUnits(
+        String(variant.price),
+        currencyCode,
+      );
+    } catch (error) {
+      console.error("Selected frame returned an invalid currency price:", error);
+      throw new Response(
+        "Unable to determine the selected frame price. Please contact the store.",
+        { status: 502 },
+      );
+    }
   }
 
   const lensIndices = catalog.lensIndices.map((index) => ({
@@ -199,40 +208,18 @@ export async function loadLensConfiguratorPage(
     refractiveIndex: Number(index.refractiveIndex),
   }));
 
-  const lensVariantByMinor: Record<number, string> = {};
-
-  if (admin) {
-    try {
-      const res = await admin.graphql(`#graphql
-        query {
-          productByIdentifier(identifier: { handle: "lens-upgrade" }) {
-            variants(first: 100) {
-              nodes { id price }
-            }
-          }
-        }`);
-
-      const json = await res.json();
-      const queryErrors = getGraphqlErrors(json);
-
-      if (!res.ok || queryErrors.length > 0) {
-        console.error(
-          "Lens upgrade product lookup failed with HTTP status:",
-          res.status,
-          queryErrors,
-        );
-      } else {
-        for (const variant of json.data?.productByIdentifier?.variants?.nodes ?? []) {
-          const priceMinor = Math.round(Number(variant.price) * 100);
-          const variantId = variant.id.split("/").pop();
-          if (Number.isFinite(priceMinor) && variantId) {
-            lensVariantByMinor[priceMinor] = variantId;
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Lens upgrade product lookup failed:", error);
-    }
+  let lensVariantIdByCode: Record<string, string> = {};
+  let checkoutPricingReady = false;
+  try {
+    lensVariantIdByCode = await syncShopLensPricing(
+      admin,
+      shop,
+      currencyCode,
+      catalog,
+    );
+    checkoutPricingReady = true;
+  } catch (error) {
+    console.error("Shopify lens price synchronization failed:", error);
   }
 
   return {
@@ -242,7 +229,8 @@ export async function loadLensConfiguratorPage(
     framePriceMinor,
     product,
     lensIndices,
-    lensVariantByMinor,
+    checkoutPricingReady,
+    lensVariantIdByCode,
     catalog: {
       lensTypes: catalog.lensTypes,
       lensOptions: catalog.lensOptions,

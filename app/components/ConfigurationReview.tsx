@@ -1,5 +1,7 @@
 import { useState } from "react";
 import type { PrescriptionData } from "./PrescriptionForm";
+import { formatMinorUnits } from "app/utils/currency";
+import { mapLensCartPriceItems } from "app/services/lens-cart-pricing";
 
 type ConfigurationReviewProps = {
   lensTypeName: string;
@@ -10,10 +12,11 @@ type ConfigurationReviewProps = {
   isUploadOnly: boolean;
   onBack?: () => void;
   framePriceMinor: number;
-  lensVariantId: string | null;
+  lensVariantIdByCode: Record<string, string>;
   lensTotalMinor: number;
   totalPriceMinor: number;
   pricingUnavailable: boolean;
+  checkoutPricingReady: boolean;
   currencyCode: string;
   variantId: string | null;
   priceItems: {
@@ -37,10 +40,11 @@ export default function ConfigurationReview({
   isUploadOnly,
   onBack,
   framePriceMinor,
-  lensVariantId,
+  lensVariantIdByCode,
   lensTotalMinor,
   totalPriceMinor,
   pricingUnavailable,
+  checkoutPricingReady,
   currencyCode,
   variantId,
   priceItems,
@@ -55,12 +59,16 @@ export default function ConfigurationReview({
   const [cartError, setCartError] = useState<string | null>(null);
 
   const formatPrice = (amountMinor: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currencyCode,
-    }).format(amountMinor / 100);
+    formatMinorUnits(amountMinor, currencyCode);
 
   const handleContinueToCart = () => {
+    if (!isUploadOnly && !checkoutPricingReady) {
+      setCartError(
+        "Lens checkout is temporarily unavailable while store pricing is being synchronized.",
+      );
+      return;
+    }
+
     if (!variantId) {
       setCartError(
         "Frame variant is missing. Please go back and select your frame.",
@@ -71,14 +79,21 @@ export default function ConfigurationReview({
     setIsAddingToCart(true);
     setCartError(null);
 
-    if (!isUploadOnly && lensTotalMinor > 0 && !lensVariantId) {
-      setCartError("Lens price is not available. Please contact support.");
+    // const storefrontOrigin = window.location.origin;
+    const groupId = crypto.randomUUID();
+    let mappedPriceItems: ReturnType<typeof mapLensCartPriceItems>;
+    try {
+      mappedPriceItems = mapLensCartPriceItems(
+        isUploadOnly ? [] : priceItems,
+        lensVariantIdByCode,
+        isUploadOnly ? 0 : lensTotalMinor,
+      );
+    } catch (error) {
+      console.error("Lens cart pricing could not be verified:", error);
+      setCartError("Lens price mapping is incomplete. Please contact support.");
       setIsAddingToCart(false);
       return;
     }
-
-    // const storefrontOrigin = window.location.origin;
-    const groupId = crypto.randomUUID();
 
     const rxProperties: Record<string, string> = isUploadOnly
       ? {
@@ -109,15 +124,22 @@ export default function ConfigurationReview({
       return_to: "/cart",
     };
 
-    if (!isUploadOnly && lensTotalMinor > 0 && lensVariantId) {
-      fields["items[1][id]"] = lensVariantId;
-      fields["items[1][quantity]"] = "1";
-      fields["items[1][properties][_lens_group]"] = groupId;
-      Object.entries(rxProperties).forEach(([key, value]) => {
-        fields[`items[1][properties][${key}]`] = value;
+    if (mappedPriceItems.length > 0) {
+      mappedPriceItems.forEach(({ item, variantId }, index) => {
+        const itemIndex = index + 1;
+        fields[`items[${itemIndex}][id]`] = variantId;
+        fields[`items[${itemIndex}][quantity]`] = "1";
+        fields[`items[${itemIndex}][properties][_lens_group]`] = groupId;
+        fields[`items[${itemIndex}][properties][Lens]`] =
+          `${lensTypeName} / ${lensIndexName}`;
+        fields[`items[${itemIndex}][properties][Lens price component]`] =
+          item.label;
+        if (index === 0) {
+          Object.entries(rxProperties).forEach(([key, value]) => {
+            fields[`items[${itemIndex}][properties][${key}]`] = value;
+          });
+        }
       });
-      fields["items[1][properties][Lens]"] =
-        `${lensTypeName} / ${lensIndexName}`;
     } else {
       Object.entries(rxProperties).forEach(([key, value]) => {
         fields[`items[0][properties][${key}]`] = value;
@@ -357,6 +379,11 @@ export default function ConfigurationReview({
               </div>
             </div>
           )}
+          {!pricingUnavailable && !checkoutPricingReady && !isUploadOnly && (
+            <p role="status" className="mt-4 text-sm text-amber-900">
+              Lens prices are shown for {currencyCode}, but checkout is unavailable until Shopify variant prices are synchronized.
+            </p>
+          )}
         </div>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <button
@@ -376,7 +403,11 @@ export default function ConfigurationReview({
             <button
               type="button"
               onClick={handleContinueToCart}
-              disabled={isAddingToCart || pricingUnavailable}
+              disabled={
+                isAddingToCart ||
+                pricingUnavailable ||
+                (!isUploadOnly && !checkoutPricingReady)
+              }
               className="rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isAddingToCart ? "Adding to cart…" : "Continue to Cart"}

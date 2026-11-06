@@ -1,8 +1,6 @@
 import type { ActionFunctionArgs } from "react-router";
-import {
-    LENS_CURRENCY_CODE,
-    loadLensCatalog,
-} from "app/services/lens-catalog.server";
+import { loadLensCatalog } from "app/services/lens-catalog.server";
+import { getAuthenticatedShopCurrency } from "app/services/shop-currency.server";
 import {
     calculatePrice,
     PriceError,
@@ -11,16 +9,7 @@ import {
 
 export const action = async ({ request }: ActionFunctionArgs) => {
     const body = await request.json().catch(() => null)
-    const { currency, selection, framePriceMinor } = body ?? {}
-
-    const currencyCode = currency === undefined
-        ? LENS_CURRENCY_CODE
-        : typeof currency === "string"
-            ? currency.toUpperCase()
-            : "";
-    if (!/^[A-Z]{3}$/.test(currencyCode)) {
-        return Response.json({ error: "A valid three-letter currency code is required." }, { status: 400 });
-    }
+    const { selection, framePriceMinor } = body ?? {}
     if (typeof selection?.lensTypeCode !== "string" || !Array.isArray(selection?.optionCodes)) {
         return Response.json(
             { error: "selection needs lensTypeCode and optionCodes[]" },
@@ -29,10 +18,12 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     try {
+        const currencyCode = await getAuthenticatedShopCurrency(request);
         const catalog = await loadLensCatalog(currencyCode)
         const price = calculatePrice(catalog, selection, framePriceMinor)
         return Response.json({ currency: currencyCode, ...price })
     } catch (e) {
+        if (e instanceof Response) throw e;
         if (e instanceof PriceUnavailableError) {
             return Response.json({ error: e.message }, { status: 422 });
         }

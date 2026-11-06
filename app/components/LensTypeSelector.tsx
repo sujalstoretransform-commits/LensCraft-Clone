@@ -4,6 +4,7 @@ import progressivePhoto from '../assets/progressive_lens.png'
 import singleVisionReadingPhoto from '../assets/single_vision_reading.png'
 import readingPhoto from '../assets/reading_lens.png'
 import nonPrescriptionPhoto from '../assets/non-prescription_lens.png'
+import { formatMinorUnits } from "app/utils/currency";
 
 type LensType = {
     code: string;
@@ -96,10 +97,7 @@ export default function LensTypeSelector({
 
                             {lens.startingPrice !== null && (
                                 <span className="mt-5 text-sm font-semibold text-blue-600">
-                                    From {new Intl.NumberFormat(undefined, {
-                                        style: "currency",
-                                        currency: currencyCode,
-                                    }).format(lens.startingPrice / 100)}
+                                    From {formatMinorUnits(lens.startingPrice, currencyCode)}
                                 </span>
                             )}
                         </button>

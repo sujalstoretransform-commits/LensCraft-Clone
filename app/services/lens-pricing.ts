@@ -23,7 +23,18 @@ type TechnologyMapping = {
 
 type Catalog = {
     lensTypes: { code: string, name: string, prices: Price[] }[]
-    lensOptions: { code: string, name: string, prices: Price[], lensTechnologyOptions?: TechnologyMapping[] }[]
+    lensOptions: {
+        code: string;
+        name: string;
+        category:
+            | "lens_type"
+            | "progressive_design"
+            | "bifocal_design"
+            | "coating"
+            | "add_on";
+        prices: Price[];
+        lensTechnologyOptions?: TechnologyMapping[];
+    }[]
 }
 
 type PriceSelection = {
@@ -77,7 +88,7 @@ export const calculatePrice = (
         const option = catalog.lensOptions.find((o) => o.code === code)
         if (!option) throw new PriceError(`Unknown option: ${code}`);
 
-        if (option.prices.length > 0) {
+        if (option.category === "add_on" || option.prices.length > 0) {
             const optionPrice = getOneprice(option.prices, option.name)
             items.push({ code: optionPrice.code, label: option.name, amountMinor: optionPrice.amountMinor })
         }
@@ -102,6 +113,10 @@ export const calculatePrice = (
                 label: technology.name,
                 amountMinor: technologyPrice.amountMinor
             })
+        } else if (option.category === "lens_type") {
+            throw new PriceUnavailableError(
+                `No ${selection.lensTechnologyCode} price is configured for ${option.name}.`,
+            );
         } else if (
             option.lensTechnologyOptions?.some(
                 (mapping) => mapping.lensType.code === selection.lensTypeCode

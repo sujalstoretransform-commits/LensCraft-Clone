@@ -6,15 +6,7 @@
       "cart": {
         "lines": [
           {
-            "id": "gid://shopify/CartLine/1",
-            "cost": {
-              "amountPerQuantity": {
-                "amount": "100.00"
-              }
-            },
-            "lensPrice": {
-              "value": null
-            }
+            "id": "gid://shopify/CartLine/1"
           }
         ]
       }
