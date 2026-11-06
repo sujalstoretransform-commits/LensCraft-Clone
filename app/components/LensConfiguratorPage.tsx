@@ -8,7 +8,10 @@ import SelectedFrame from "./SelectedFrame";
 import SingleVisionConfigurator from "./SingleVisionConfigurator";
 import ConfigurationReview from "./ConfigurationReview";
 import { validatePrescription, type Prescription, } from "app/services/prescription";
-import { calculatePrice } from "app/services/lens-pricing";
+import {
+  calculatePrice,
+  PriceUnavailableError,
+} from "app/services/lens-pricing";
 import PrescriptionSelection, { type PrescriptionMethodCode } from "./PrescriptionSelection";
 import CoatingReview, { type CoatingSelection } from "./CoatingReview";
 import LensTechnologySelector from "./LensTechnologySelector";
@@ -57,6 +60,7 @@ export default function LensConfiguratorPage({
   const [selectedLensOptionCode, setSelectedLensOptionCode] = useState("clear");
   const [priceResult, setPriceResult] = useState<PriceResult | null>(null);
   const [priceError, setPriceError] = useState("");
+  const [priceUnavailable, setPriceUnavailable] = useState(false);
   const [prescriptionMethod, setPrescriptionMethod] = useState<PrescriptionMethodCode | null>(null);
   const [coatingSelection, setCoatingSelection] = useState<CoatingSelection>([]);
 
@@ -156,6 +160,7 @@ export default function LensConfiguratorPage({
     optionCodes: string[],
   ): boolean => {
     setPriceError("");
+    setPriceUnavailable(false);
 
     try {
       const pricing = calculatePrice(
@@ -177,6 +182,10 @@ export default function LensConfiguratorPage({
       setPriceError(
         error instanceof Error ? error.message : "Unable to calculate price.",
       );
+      if (error instanceof PriceUnavailableError) {
+        setPriceUnavailable(true);
+        return true;
+      }
       return false;
     }
   };
@@ -227,6 +236,7 @@ export default function LensConfiguratorPage({
               setSelectedLensIndexCode("")
               setPriceResult(null)
               setPriceError("")
+              setPriceUnavailable(false)
               setPrescriptionErrors([]);
             }}
             onContinue={() => setStep(2)}
@@ -437,6 +447,7 @@ export default function LensConfiguratorPage({
             }
             lensTotalMinor={prescriptionMethod === "upload" ? 0 : priceResult?.lensTotalMinor ?? 0}
             totalPriceMinor={prescriptionMethod === "upload" ? framePriceMinor : priceResult?.totalMinor ?? framePriceMinor}
+            pricingUnavailable={prescriptionMethod !== "upload" && priceUnavailable}
             currencyCode={currencyCode}
             variantId={product.variantId}
             onBack={() => setStep(prescriptionMethod === "upload" ? 3 : 7)}

@@ -3,18 +3,23 @@ import {
     LENS_CURRENCY_CODE,
     loadLensCatalog,
 } from "app/services/lens-catalog.server";
-import { calculatePrice, PriceError } from "app/services/lens-pricing";
+import {
+    calculatePrice,
+    PriceError,
+    PriceUnavailableError,
+} from "app/services/lens-pricing";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
     const body = await request.json().catch(() => null)
     const { currency, selection, framePriceMinor } = body ?? {}
 
-    if (
-        currency !== undefined &&
-        (typeof currency !== "string" ||
-            currency.toUpperCase() !== LENS_CURRENCY_CODE)
-    ) {
-        return Response.json({ error: "Only USD lens pricing is supported." }, { status: 400 });
+    const currencyCode = currency === undefined
+        ? LENS_CURRENCY_CODE
+        : typeof currency === "string"
+            ? currency.toUpperCase()
+            : "";
+    if (!/^[A-Z]{3}$/.test(currencyCode)) {
+        return Response.json({ error: "A valid three-letter currency code is required." }, { status: 400 });
     }
     if (typeof selection?.lensTypeCode !== "string" || !Array.isArray(selection?.optionCodes)) {
         return Response.json(
@@ -24,10 +29,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     try {
-        const catalog = await loadLensCatalog()
+        const catalog = await loadLensCatalog(currencyCode)
         const price = calculatePrice(catalog, selection, framePriceMinor)
-        return Response.json({ currency: LENS_CURRENCY_CODE, ...price })
+        return Response.json({ currency: currencyCode, ...price })
     } catch (e) {
+        if (e instanceof PriceUnavailableError) {
+            return Response.json({ error: e.message }, { status: 422 });
+        }
         if (e instanceof PriceError) {
             return Response.json({ error: e.message }, { status: 400 });
         }

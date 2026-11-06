@@ -13,6 +13,7 @@ type ConfigurationReviewProps = {
   lensVariantId: string | null;
   lensTotalMinor: number;
   totalPriceMinor: number;
+  pricingUnavailable: boolean;
   currencyCode: string;
   variantId: string | null;
   priceItems: {
@@ -39,6 +40,7 @@ export default function ConfigurationReview({
   lensVariantId,
   lensTotalMinor,
   totalPriceMinor,
+  pricingUnavailable,
   currencyCode,
   variantId,
   priceItems,
@@ -325,30 +327,36 @@ export default function ConfigurationReview({
             Price Summary
           </h2>
 
-          <div className="mt-4 space-y-3 text-sm">
-            <div className="flex justify-between gap-4">
-              <span className="text-slate-600">Frame price</span>
-              <span className="font-medium text-slate-900">
-                {formatPrice(framePriceMinor)}
-              </span>
-            </div>
-
-            {priceItems.map((item) => (
-              <div key={item.code} className="flex justify-between gap-4">
-                <span className="text-slate-600">{item.label}</span>
+          {pricingUnavailable ? (
+            <p role="status" className="mt-4 text-sm text-amber-900">
+              Lens prices are not configured for {currencyCode}. You can review your selection, but checkout is unavailable until lens prices are configured for this currency.
+            </p>
+          ) : (
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="flex justify-between gap-4">
+                <span className="text-slate-600">Frame price</span>
                 <span className="font-medium text-slate-900">
-                  {formatPrice(item.amountMinor)}
+                  {formatPrice(framePriceMinor)}
                 </span>
               </div>
-            ))}
 
-            <div className="flex justify-between gap-4 border-t border-slate-200 pt-3 text-base">
-              <span className="font-semibold text-slate-900">Total</span>
-              <span className="font-bold text-slate-900">
-                {formatPrice(totalPriceMinor)}
-              </span>
+              {priceItems.map((item) => (
+                <div key={item.code} className="flex justify-between gap-4">
+                  <span className="text-slate-600">{item.label}</span>
+                  <span className="font-medium text-slate-900">
+                    {formatPrice(item.amountMinor)}
+                  </span>
+                </div>
+              ))}
+
+              <div className="flex justify-between gap-4 border-t border-slate-200 pt-3 text-base">
+                <span className="font-semibold text-slate-900">Total</span>
+                <span className="font-bold text-slate-900">
+                  {formatPrice(totalPriceMinor)}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <button
@@ -368,8 +376,8 @@ export default function ConfigurationReview({
             <button
               type="button"
               onClick={handleContinueToCart}
-              disabled={isAddingToCart}
-              className="rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700"
+              disabled={isAddingToCart || pricingUnavailable}
+              className="rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isAddingToCart ? "Adding to cart…" : "Continue to Cart"}
             </button>

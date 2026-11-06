@@ -1,4 +1,5 @@
 export class PriceError extends Error { }
+export class PriceUnavailableError extends PriceError { }
 
 type Price = {
     code: string;
@@ -33,6 +34,9 @@ type PriceSelection = {
 }
 
 const getOneprice = (prices: Price[], typeName: string) => {
+    if (prices.length === 0) {
+        throw new PriceUnavailableError(`No ${typeName} price is configured for this currency.`);
+    }
     if (prices.length !== 1) {
         throw new PriceError(`Expected 1 price for ${typeName}, found ${prices.length}.`);
     }

@@ -1,8 +1,5 @@
 import { authenticate } from "../shopify.server";
-import {
-  LENS_CURRENCY_CODE,
-  loadLensCatalog,
-} from "./lens-catalog.server";
+import { loadLensCatalog } from "./lens-catalog.server";
 
 const getGraphqlErrors = (body: unknown) => {
   if (typeof body !== "object" || body === null) return [];
@@ -92,28 +89,14 @@ export async function loadLensConfiguratorPage(
     );
   }
 
-  if (storeCurrencyCode !== LENS_CURRENCY_CODE) {
-    throw new Response(
-      "LensCraft currently supports Shopify stores whose primary currency is USD.",
-      { status: 422 },
-    );
-  }
-
   const presentmentCurrencyCode = url.searchParams.get("currency");
-  if (
-    presentmentCurrencyCode &&
-    presentmentCurrencyCode.toUpperCase() !== LENS_CURRENCY_CODE
-  ) {
-    throw new Response(
-      "LensCraft currently supports shoppers checking out in USD only.",
-      { status: 422 },
-    );
-  }
-
-  const currencyCode = LENS_CURRENCY_CODE;
+  const currencyCode =
+    presentmentCurrencyCode && /^[A-Z]{3}$/i.test(presentmentCurrencyCode)
+      ? presentmentCurrencyCode.toUpperCase()
+      : storeCurrencyCode;
   let catalog: Awaited<ReturnType<typeof loadLensCatalog>>;
   try {
-    catalog = await loadLensCatalog();
+    catalog = await loadLensCatalog(currencyCode);
   } catch (error) {
     console.error("Lens catalog lookup failed:", error);
     throw new Response(

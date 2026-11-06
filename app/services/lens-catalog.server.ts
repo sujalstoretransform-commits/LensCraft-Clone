@@ -229,7 +229,7 @@ const getPrescriptionMethods = async () => {
 }
 
 
-export const loadLensCatalog = async () => {
+export const loadLensCatalog = async (currencyCode = LENS_CURRENCY_CODE) => {
     const [
         lensTypes,
         lensIndices,
@@ -240,12 +240,12 @@ export const loadLensCatalog = async () => {
         lensTechnologyIndexCompatibility,
         prescriptionMethods,
     ] = await Promise.all([
-        getLensTypes(LENS_CURRENCY_CODE),
-        getLensIndices(LENS_CURRENCY_CODE),
-        getLensOptions(LENS_CURRENCY_CODE),
+        getLensTypes(currencyCode),
+        getLensIndices(currencyCode),
+        getLensOptions(currencyCode),
         getRules(),
         getLensIndexCompatibilities(),
-        getLensTechnologies(LENS_CURRENCY_CODE),
+        getLensTechnologies(currencyCode),
         getLensTechnologyIndexCompatibility(),
         getPrescriptionMethods(),
     ]);
