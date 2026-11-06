@@ -1,5 +1,8 @@
 import { authenticate } from "../shopify.server";
-import { loadLensCatalog } from "./lens-catalog.server";
+import {
+  LENS_CURRENCY_CODE,
+  loadLensCatalog,
+} from "./lens-catalog.server";
 
 const getGraphqlErrors = (body: unknown) => {
   if (typeof body !== "object" || body === null) return [];
@@ -62,7 +65,7 @@ export async function loadLensConfiguratorPage(
   } catch (error) {
     console.error("Shop currency lookup failed:", error);
     throw new Response(
-      "Unable to load this store's currency. Please try again or contact support.",
+      "Unable to verify this store's currency. Please try again or contact support.",
       { status: 502 },
     );
   }
@@ -75,23 +78,42 @@ export async function loadLensConfiguratorPage(
       currencyErrors,
     );
     throw new Response(
-      "Unable to load this store's currency. Please try again or contact support.",
+      "Unable to verify this store's currency. Please try again or contact support.",
       { status: 502 },
     );
   }
 
-  const currencyCode = currencyJson.data?.shop?.currencyCode;
-  if (typeof currencyCode !== "string" || !/^[A-Z]{3}$/.test(currencyCode)) {
+  const storeCurrencyCode = currencyJson.data?.shop?.currencyCode;
+  if (typeof storeCurrencyCode !== "string" || !/^[A-Z]{3}$/.test(storeCurrencyCode)) {
     console.error("Shop currency lookup returned no valid currency code.");
     throw new Response(
-      "Unable to determine this store's currency. Please contact support.",
+      "Unable to verify this store's currency. Please try again or contact support.",
       { status: 502 },
     );
   }
 
+  if (storeCurrencyCode !== LENS_CURRENCY_CODE) {
+    throw new Response(
+      "LensCraft currently supports Shopify stores whose primary currency is USD.",
+      { status: 422 },
+    );
+  }
+
+  const presentmentCurrencyCode = url.searchParams.get("currency");
+  if (
+    presentmentCurrencyCode &&
+    presentmentCurrencyCode.toUpperCase() !== LENS_CURRENCY_CODE
+  ) {
+    throw new Response(
+      "LensCraft currently supports shoppers checking out in USD only.",
+      { status: 422 },
+    );
+  }
+
+  const currencyCode = LENS_CURRENCY_CODE;
   let catalog: Awaited<ReturnType<typeof loadLensCatalog>>;
   try {
-    catalog = await loadLensCatalog(currencyCode);
+    catalog = await loadLensCatalog();
   } catch (error) {
     console.error("Lens catalog lookup failed:", error);
     throw new Response(

@@ -1,5 +1,4 @@
 import { PrismaClient, LensPriceKind } from "@prisma/client";
-import { usdMinorToInrMinor } from "./pricing";
 
 const prisma = new PrismaClient();
 
@@ -18,11 +17,6 @@ const LENS_TYPE_PRICING = [
     lensTypeCode: "progressive",
     basePriceMinor: 5000,
   },
-];
-
-const INR_ONLY_LENS_TYPE_PRICING = [
-  { lensTypeCode: "reading_glasses", basePriceMinor: 100000 },
-  { lensTypeCode: "non_prescription", basePriceMinor: 50000 },
 ];
 
 function getIndexUpgradeMinor(refractiveIndex: number): number {
@@ -85,28 +79,6 @@ async function seedLensTypePrices(
     },
   });
 
-  const inrBaseCode = `test-${lensType.code}-base-inr`;
-  await prisma.lensPrice.upsert({
-    where: { code: inrBaseCode },
-    update: {
-      kind: LensPriceKind.base,
-      amountMinor: usdMinorToInrMinor(basePriceMinor),
-      currencyCode: "INR",
-      lensTypeId: lensType.id,
-      lensIndexId: null,
-      lensOptionId: null,
-      active: true,
-    },
-    create: {
-      code: inrBaseCode,
-      kind: LensPriceKind.base,
-      amountMinor: usdMinorToInrMinor(basePriceMinor),
-      currencyCode: "INR",
-      lensTypeId: lensType.id,
-      active: true,
-    },
-  });
-
   console.log(
     `${lensType.code}: base price $${(basePriceMinor / 100).toFixed(2)}`,
   );
@@ -139,29 +111,6 @@ async function seedLensTypePrices(
       },
     });
 
-    const inrCode = `test-${lensType.code}-${index.code}-upgrade-inr`;
-    await prisma.lensPrice.upsert({
-      where: { code: inrCode },
-      update: {
-        kind: LensPriceKind.upgrade,
-        amountMinor: usdMinorToInrMinor(amountMinor),
-        currencyCode: "INR",
-        lensTypeId: lensType.id,
-        lensIndexId: index.id,
-        lensOptionId: null,
-        active: true,
-      },
-      create: {
-        code: inrCode,
-        kind: LensPriceKind.upgrade,
-        amountMinor: usdMinorToInrMinor(amountMinor),
-        currencyCode: "INR",
-        lensTypeId: lensType.id,
-        lensIndexId: index.id,
-        active: true,
-      },
-    });
-
     console.log(
       `${lensType.code} | ${index.code} (${refractiveIndex}): $${(
         amountMinor / 100
@@ -182,40 +131,6 @@ async function main() {
       pricing.lensTypeCode,
       pricing.basePriceMinor,
     );
-  }
-
-  for (const pricing of INR_ONLY_LENS_TYPE_PRICING) {
-    const lensType = await prisma.lensType.findUnique({
-      where: { code: pricing.lensTypeCode },
-    });
-
-    if (!lensType) {
-      throw new Error(
-        `Lens type "${pricing.lensTypeCode}" not found. Seed lens types first.`,
-      );
-    }
-
-    const code = `test-${lensType.code}-base-inr`;
-    await prisma.lensPrice.upsert({
-      where: { code },
-      update: {
-        kind: LensPriceKind.base,
-        amountMinor: pricing.basePriceMinor,
-        currencyCode: "INR",
-        lensTypeId: lensType.id,
-        lensIndexId: null,
-        lensOptionId: null,
-        active: true,
-      },
-      create: {
-        code,
-        kind: LensPriceKind.base,
-        amountMinor: pricing.basePriceMinor,
-        currencyCode: "INR",
-        lensTypeId: lensType.id,
-        active: true,
-      },
-    });
   }
 
   console.log("Lens price seeding completed.");

@@ -1,5 +1,4 @@
 import { PrismaClient, LensPriceKind } from "@prisma/client";
-import { usdMinorToInrMinor } from "./pricing";
 
 const prisma = new PrismaClient();
 
@@ -116,27 +115,6 @@ async function main() {
       },
     });
 
-    await prisma.lensPrice.upsert({
-      where: {
-        code: `technology-${technologyData.code}-inr`,
-      },
-      update: {
-        kind: LensPriceKind.upgrade,
-        amountMinor: usdMinorToInrMinor(price),
-        currencyCode: "INR",
-        lensTechnologyId: result.id,
-        active: true,
-      },
-      create: {
-        code: `technology-${technologyData.code}-inr`,
-        kind: LensPriceKind.upgrade,
-        amountMinor: usdMinorToInrMinor(price),
-        currencyCode: "INR",
-        lensTechnologyId: result.id,
-        active: true,
-      },
-    });
-
     console.log(
       `Seeded: ${result.name} (${result.code}) - $${(price / 100).toFixed(2)}`,
     );
@@ -148,6 +126,7 @@ async function main() {
       code: {
         startsWith: "technology-",
       },
+      currencyCode: "USD",
     },
   });
 

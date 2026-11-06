@@ -1,6 +1,8 @@
 import prisma from "../db.server";
 import type { PrescriptionMethodCode } from "../components/PrescriptionSelection";
 
+export const LENS_CURRENCY_CODE = "USD";
+
 const priceFields = {
     code: true,
     kind: true,
@@ -227,7 +229,7 @@ const getPrescriptionMethods = async () => {
 }
 
 
-export const loadLensCatalog = async (currencyCode: string) => {
+export const loadLensCatalog = async () => {
     const [
         lensTypes,
         lensIndices,
@@ -238,12 +240,12 @@ export const loadLensCatalog = async (currencyCode: string) => {
         lensTechnologyIndexCompatibility,
         prescriptionMethods,
     ] = await Promise.all([
-        getLensTypes(currencyCode),
-        getLensIndices(currencyCode),
-        getLensOptions(currencyCode),
+        getLensTypes(LENS_CURRENCY_CODE),
+        getLensIndices(LENS_CURRENCY_CODE),
+        getLensOptions(LENS_CURRENCY_CODE),
         getRules(),
         getLensIndexCompatibilities(),
-        getLensTechnologies(currencyCode),
+        getLensTechnologies(LENS_CURRENCY_CODE),
         getLensTechnologyIndexCompatibility(),
         getPrescriptionMethods(),
     ]);
