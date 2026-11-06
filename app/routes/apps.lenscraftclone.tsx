@@ -6,7 +6,31 @@ import LensConfiguratorError from "app/components/LensConfiguratorError";
 import { loadLensConfiguratorPage } from "app/services/lens-configurator-page.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  return loadLensConfiguratorPage(request);
+  const url = new URL(request.url)
+
+  const productId = url.searchParams.get("productId")
+  const variantId = url.searchParams.get("variantId")
+
+  if (!productId && !variantId) {
+    return loadLensConfiguratorPage(request)
+  }
+
+  if (
+    !productId ||
+    !/^\d{1,20}$/.test(productId) ||
+    !variantId ||
+    !/^\d{1,20}$/.test(variantId)
+  ) {
+    throw new Response(
+      "Invalid product or variant information.",
+      { status: 400 }
+    )
+  }
+
+  return loadLensConfiguratorPage(request, {
+    productId,
+    variantId
+  });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
