@@ -11,7 +11,7 @@ export type MappedLensCartPriceItem = {
 
 export function mapLensCartPriceItems(
   priceItems: LensCartPriceItem[],
-  lensVariantId: string | undefined,
+  lensVariantIdByCode: Record<string, string>,
   lensTotalMinor: number,
 ): MappedLensCartPriceItem[] {
   if (!Number.isSafeInteger(lensTotalMinor) || lensTotalMinor < 0) {
@@ -26,27 +26,23 @@ export function mapLensCartPriceItems(
     throw new RangeError("Lens price components must be non-negative minor units.");
   }
 
-  const calculatedTotal = priceItems.reduce(
-    (sum, item) => sum + item.amountMinor,
+  const paidItems = priceItems.filter((item) => item.amountMinor > 0);
+  const mappedItems: MappedLensCartPriceItem[] = [];
+  for (const item of paidItems) {
+    const variantId = lensVariantIdByCode[item.code];
+    if (!variantId) {
+      throw new Error(`No Shopify variant is mapped to lens price "${item.label}".`);
+    }
+    mappedItems.push({ item, variantId });
+  }
+
+  const mappedTotal = mappedItems.reduce(
+    (sum, { item }) => sum + item.amountMinor,
     0,
   );
-  if (calculatedTotal !== lensTotalMinor) {
-    throw new Error("Lens price components do not match the lens total.");
+  if (mappedTotal !== lensTotalMinor) {
+    throw new Error("Lens price components do not match the calculated total.");
   }
 
-  if (lensTotalMinor === 0) return [];
-  if (!lensVariantId) {
-    throw new Error("No lens-upgrade variant matches the lens total.");
-  }
-
-  return [
-    {
-      item: {
-        code: "lens-upgrade-total",
-        label: "Lens upgrade",
-        amountMinor: lensTotalMinor,
-      },
-      variantId: lensVariantId,
-    },
-  ];
+  return mappedItems;
 }

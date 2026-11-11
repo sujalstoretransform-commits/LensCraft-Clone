@@ -12,7 +12,7 @@ type ConfigurationReviewProps = {
   isUploadOnly: boolean;
   onBack?: () => void;
   framePriceMinor: number;
-  lensVariantIdByPrice: Record<string, string>;
+  lensVariantIdByCode: Record<string, string>;
   lensTotalMinor: number;
   totalPriceMinor: number;
   pricingUnavailable: boolean;
@@ -40,7 +40,7 @@ export default function ConfigurationReview({
   isUploadOnly,
   onBack,
   framePriceMinor,
-  lensVariantIdByPrice,
+  lensVariantIdByCode,
   lensTotalMinor,
   totalPriceMinor,
   pricingUnavailable,
@@ -60,22 +60,12 @@ export default function ConfigurationReview({
 
   const formatPrice = (amountMinor: number) =>
     formatMinorUnits(amountMinor, currencyCode);
-  const lensVariantId = lensVariantIdByPrice[String(lensTotalMinor)];
-  const hasMatchingLensVariant = lensTotalMinor === 0 || Boolean(lensVariantId);
-  const canContinueToCart =
-    isUploadOnly || (lensVariantsLoaded && hasMatchingLensVariant);
+  const canContinueToCart = isUploadOnly || lensVariantsLoaded;
 
   const handleContinueToCart = () => {
     if (!isUploadOnly && !lensVariantsLoaded) {
       setCartError(
-        "Could not load the Lens upgrade product. Please refresh and try again.",
-      );
-      return;
-    }
-
-    if (!isUploadOnly && !hasMatchingLensVariant) {
-      setCartError(
-        `Add a Lens upgrade variant priced at ${formatPrice(lensTotalMinor)} to enable checkout.`,
+        "The store is missing one or more lens price variants. Please contact the store owner.",
       );
       return;
     }
@@ -96,7 +86,7 @@ export default function ConfigurationReview({
     try {
       mappedPriceItems = mapLensCartPriceItems(
         isUploadOnly ? [] : priceItems,
-        lensVariantId,
+        lensVariantIdByCode,
         isUploadOnly ? 0 : lensTotalMinor,
       );
     } catch (error) {
@@ -364,7 +354,7 @@ export default function ConfigurationReview({
 
           {pricingUnavailable ? (
             <p role="status" className="mt-4 text-sm text-amber-900">
-              We couldn’t load lens prices right now. You can review your selection, but checkout is paused until pricing is restored.
+              One or more lens prices aren’t configured in the Lens upgrade product. Please contact the store owner.
             </p>
           ) : (
             <div className="mt-4 space-y-3 text-sm">
@@ -403,14 +393,6 @@ export default function ConfigurationReview({
           </button>
 
           <div className="flex flex-col items-start gap-2 sm:items-end">
-            {!isUploadOnly &&
-              lensVariantsLoaded &&
-              lensTotalMinor > 0 &&
-              !hasMatchingLensVariant && (
-                <p role="status" className="max-w-md text-sm text-amber-900 sm:text-right">
-                  This store doesn’t have a Lens upgrade variant priced at {formatPrice(lensTotalMinor)}. Please contact the store owner for help.
-                </p>
-              )}
             {cartError && (
               <p role="alert" className="text-sm text-red-600">
                 {cartError}

@@ -43,6 +43,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const productId = parseNumericId(formData.get("productId"));
   const variantId = parseNumericId(formData.get("variantId"));
   const currency = formData.get("currency");
+  const country = formData.get("country");
   const params = new URLSearchParams();
 
   if (productId && variantId) {
@@ -51,6 +52,9 @@ export async function action({ request }: ActionFunctionArgs) {
   }
   if (typeof currency === "string" && /^[A-Za-z]{3}$/.test(currency)) {
     params.set("currency", currency.toUpperCase());
+  }
+  if (typeof country === "string" && /^[A-Za-z]{2}$/.test(country)) {
+    params.set("country", country.toUpperCase());
   }
 
   const query = params.toString();
