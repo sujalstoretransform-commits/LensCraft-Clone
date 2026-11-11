@@ -50,7 +50,8 @@
         const productForm = document.querySelector('form[action*="/cart/add"]');
 
         const variantInput = productForm?.querySelector('[name="id"]');
-        const variantId = variantInput?.value || block.dataset.variantId;
+        const urlVariant = new URLSearchParams(window.location.search).get('variant');
+        const variantId = variantInput?.value || urlVariant || block.dataset.variantId;
         const productId = block.dataset.productId;
 
         if (!productId || !variantId) {
@@ -61,20 +62,12 @@
         button.disabled = true;
         button.textContent = 'Loading lens options…';
 
-        const form = document.createElement('form');
-        form.method = 'post';
-        form.action = '/apps/lenscraftclone';
-
-        for (const [name, value] of Object.entries({ productId, variantId })) {
-          const input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = name;
-          input.value = value;
-          form.appendChild(input);
-        }
-
-        document.body.appendChild(form);
-        form.submit();
+        const frameData = JSON.stringify({
+          productId: String(productId),
+          variantId: String(variantId),
+        });
+        document.cookie = `lenscraft_frame=${encodeURIComponent(frameData)}; path=/; max-age=3600; SameSite=Lax; Secure`;
+        window.location.href = '/apps/lenscraftclone';
       });
     })();
   </script>

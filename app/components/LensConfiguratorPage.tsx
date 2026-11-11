@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { LensConfiguratorPageData } from "app/services/lens-configurator-page.server";
 import LensTypeSelector from "./LensTypeSelector";
 import TrustBenefits from "./TrustBenefits";
@@ -46,6 +46,24 @@ export default function LensConfiguratorPage({
   } = data;
 
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
+
+  // Keep storefront URL completely clean in browser address bar
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search) {
+      const url = new URL(window.location.href);
+      let changed = false;
+      for (const param of ["productId", "variantId", "currency"]) {
+        if (url.searchParams.has(param)) {
+          url.searchParams.delete(param);
+          changed = true;
+        }
+      }
+      if (changed) {
+        const cleanUrl = url.pathname + (url.search ? url.search : "");
+        window.history.replaceState({}, "", cleanUrl);
+      }
+    }
+  }, []);
   const [prescriptionValues, setPrescriptionValues] = useState<PrescriptionData | undefined>();
   const [prescriptionImage, setPrescriptionImage] = useState<File | null>(null);
   const [prescriptionImageName, setPrescriptionImageName] = useState<string | null>(null);
