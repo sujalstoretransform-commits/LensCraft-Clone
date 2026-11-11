@@ -14,6 +14,57 @@ const getGraphqlErrors = (body: unknown) => {
   return Array.isArray(errors) ? errors : [];
 };
 
+type AdminGraphqlClient = {
+  graphql(
+    query: string,
+    options?: { variables?: Record<string, unknown> },
+  ): Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
+};
+
+async function ensureLensCartTransform(admin: AdminGraphqlClient) {
+  try {
+    const lookup = await admin.graphql(`#graphql
+      query LensCartTransforms {
+        cartTransforms(first: 1) {
+          nodes { id }
+        }
+      }`);
+    const lookupBody = await lookup.json();
+    const lookupErrors = getGraphqlErrors(lookupBody);
+    if (!lookup.ok || lookupErrors.length > 0) {
+      console.error("Lens cart transform lookup failed:", lookup.status, lookupErrors);
+      return;
+    }
+
+    const existing = (lookupBody as { data?: { cartTransforms?: { nodes?: unknown[] } } })
+      .data?.cartTransforms?.nodes ?? [];
+    if (existing.length > 0) return;
+
+    const creation = await admin.graphql(`#graphql
+      mutation CreateLensCartTransform {
+        cartTransformCreate(functionHandle: "lens-price", blockOnFailure: false) {
+          cartTransform { id }
+          userErrors { field message }
+        }
+      }`);
+    const creationBody = await creation.json();
+    const creationErrors = getGraphqlErrors(creationBody);
+    const userErrors = (creationBody as {
+      data?: { cartTransformCreate?: { userErrors?: { message: string }[] } };
+    }).data?.cartTransformCreate?.userErrors ?? [];
+    if (!creation.ok || creationErrors.length > 0 || userErrors.length > 0) {
+      console.error(
+        "Lens cart transform activation failed:",
+        creation.status,
+        creationErrors,
+        userErrors,
+      );
+    }
+  } catch (error) {
+    console.error("Lens cart transform activation failed:", error);
+  }
+}
+
 function emptyLensCatalog(currencyCode: string): LensCatalog {
   return {
     currencyCode,
@@ -100,6 +151,8 @@ export async function loadLensConfiguratorPage(
       { status: 503 },
     );
   }
+
+  await ensureLensCartTransform(admin);
 
   const requestedCurrency = url.searchParams.get("currency")?.toUpperCase();
   const requestedCountry = url.searchParams.get("country")?.toUpperCase();

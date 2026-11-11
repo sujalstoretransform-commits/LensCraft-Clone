@@ -125,8 +125,14 @@ export default function ConfigurationReview({
       "items[0][id]": variantId,
       "items[0][quantity]": "1",
       "items[0][properties][_lens_group]": groupId,
+      "items[0][properties][_lens_parent]": "true",
+      "items[0][properties][Lens]": `${lensTypeName} / ${lensIndexName}`,
       return_to: "/cart",
     };
+
+    Object.entries(rxProperties).forEach(([key, value]) => {
+      fields[`items[0][properties][${key}]`] = value;
+    });
 
     if (mappedPriceItems.length > 0) {
       mappedPriceItems.forEach(({ item, variantId }, index) => {
@@ -137,15 +143,6 @@ export default function ConfigurationReview({
         fields[`items[${itemIndex}][properties][Lens]`] =
           `${lensTypeName} / ${lensIndexName}`;
         fields[`items[${itemIndex}][properties][Lens price component]`] = item.label;
-        if (index === 0) {
-          Object.entries(rxProperties).forEach(([key, value]) => {
-            fields[`items[${itemIndex}][properties][${key}]`] = value;
-          });
-        }
-      });
-    } else {
-      Object.entries(rxProperties).forEach(([key, value]) => {
-        fields[`items[0][properties][${key}]`] = value;
       });
     }
 
