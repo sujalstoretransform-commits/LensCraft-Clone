@@ -136,7 +136,7 @@ Rates are cached in PostgreSQL for six hours. If a refresh fails, a cached rate 
 
 Apply the Prisma migration during deployment with `npx prisma migrate deploy` (or the existing `npm run setup` command where appropriate).
 
-Shop-specific lens variant synchronization requires `read_products` and `write_products`. Each active USD master price must have one matching variant on the store's existing `lens-upgrade` product, with that variant's SKU set to the exact `LensPrice.code`. The app updates only those matched variant prices and never creates products or variants. Stores without complete, unique SKU mappings remain usable for configuration and price display, but checkout stays disabled until synchronization succeeds. After changing scopes, redeploy the app and have merchants approve the updated permissions.
+Lens checkout reads variants from the store's existing `lens-upgrade` product using `read_products`. The configurator calculates the selected lens component total, then adds one product variant whose Shopify price exactly matches that total in the store's base currency. SKUs are not required and the app does not create or update product variants. Add a price-tier variant for each lens total you want to support; checkout stays disabled when no exact-price variant exists.
 
 ## Gotchas / Troubleshooting
 

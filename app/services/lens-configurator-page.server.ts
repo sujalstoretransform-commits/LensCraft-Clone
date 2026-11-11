@@ -1,7 +1,7 @@
 import { authenticate } from "../shopify.server";
 import { loadLensCatalog } from "./lens-catalog.server";
 import { parseMajorToMinorUnits } from "app/utils/currency";
-import { syncShopLensPricing } from "./shopify-lens-pricing.server";
+import { loadShopLensVariantsByPrice } from "./shopify-lens-pricing.server";
 
 type LensCatalog = Awaited<ReturnType<typeof loadLensCatalog>>;
 
@@ -248,19 +248,17 @@ export async function loadLensConfiguratorPage(
     refractiveIndex: Number(index.refractiveIndex),
   }));
 
-  let lensVariantIdByCode: Record<string, string> = {};
-  let checkoutPricingReady = false;
+  let lensVariantIdByPrice: Record<string, string> = {};
+  let lensVariantsLoaded = false;
   if (pricingAvailable) {
     try {
-      lensVariantIdByCode = await syncShopLensPricing(
+      lensVariantIdByPrice = await loadShopLensVariantsByPrice(
         admin,
-        shop,
         currencyCode,
-        catalog,
       );
-      checkoutPricingReady = true;
+      lensVariantsLoaded = true;
     } catch (error) {
-      console.error("Shopify lens price synchronization failed:", error);
+      console.error("Shopify lens-upgrade variants could not be loaded:", error);
     }
   }
 
@@ -273,8 +271,8 @@ export async function loadLensConfiguratorPage(
     framePriceMinor,
     product,
     lensIndices,
-    checkoutPricingReady,
-    lensVariantIdByCode,
+    lensVariantsLoaded,
+    lensVariantIdByPrice,
     catalog: {
       lensTypes: catalog.lensTypes,
       lensOptions: catalog.lensOptions,
@@ -333,8 +331,8 @@ export async function loadLensConfiguratorFallback(
       ...index,
       refractiveIndex: Number(index.refractiveIndex),
     })),
-    checkoutPricingReady: false,
-    lensVariantIdByCode: {},
+    lensVariantsLoaded: false,
+    lensVariantIdByPrice: {},
     catalog: {
       lensTypes: catalog.lensTypes,
       lensOptions: catalog.lensOptions,

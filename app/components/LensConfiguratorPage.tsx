@@ -41,8 +41,8 @@ export default function LensConfiguratorPage({
     catalog,
     lensIndices,
     pricingAvailable,
-    checkoutPricingReady,
-    lensVariantIdByCode,
+    lensVariantsLoaded,
+    lensVariantIdByPrice,
     proxyPathPrefix,
   } = data;
 
@@ -458,13 +458,13 @@ export default function LensConfiguratorPage({
             prescription={prescriptionValues}
             isUploadOnly={prescriptionMethod === "upload"}
             framePriceMinor={framePriceMinor}
-            lensVariantIdByCode={lensVariantIdByCode}
+            lensVariantIdByPrice={lensVariantIdByPrice}
             lensTotalMinor={prescriptionMethod === "upload" ? 0 : priceResult?.lensTotalMinor ?? 0}
             totalPriceMinor={prescriptionMethod === "upload" ? framePriceMinor : priceResult?.totalMinor ?? framePriceMinor}
             pricingUnavailable={priceUnavailable}
-            checkoutPricingReady={
+            lensVariantsLoaded={
               pricingAvailable &&
-              (prescriptionMethod === "upload" || checkoutPricingReady)
+              (prescriptionMethod === "upload" || lensVariantsLoaded)
             }
             currencyCode={currencyCode}
             variantId={product.variantId}

@@ -12,11 +12,11 @@ type ConfigurationReviewProps = {
   isUploadOnly: boolean;
   onBack?: () => void;
   framePriceMinor: number;
-  lensVariantIdByCode: Record<string, string>;
+  lensVariantIdByPrice: Record<string, string>;
   lensTotalMinor: number;
   totalPriceMinor: number;
   pricingUnavailable: boolean;
-  checkoutPricingReady: boolean;
+  lensVariantsLoaded: boolean;
   currencyCode: string;
   variantId: string | null;
   priceItems: {
@@ -40,11 +40,11 @@ export default function ConfigurationReview({
   isUploadOnly,
   onBack,
   framePriceMinor,
-  lensVariantIdByCode,
+  lensVariantIdByPrice,
   lensTotalMinor,
   totalPriceMinor,
   pricingUnavailable,
-  checkoutPricingReady,
+  lensVariantsLoaded,
   currencyCode,
   variantId,
   priceItems,
@@ -60,11 +60,22 @@ export default function ConfigurationReview({
 
   const formatPrice = (amountMinor: number) =>
     formatMinorUnits(amountMinor, currencyCode);
+  const lensVariantId = lensVariantIdByPrice[String(lensTotalMinor)];
+  const hasMatchingLensVariant = lensTotalMinor === 0 || Boolean(lensVariantId);
+  const canContinueToCart =
+    isUploadOnly || (lensVariantsLoaded && hasMatchingLensVariant);
 
   const handleContinueToCart = () => {
-    if (!isUploadOnly && !checkoutPricingReady) {
+    if (!isUploadOnly && !lensVariantsLoaded) {
       setCartError(
-        "Lens checkout is temporarily unavailable while store pricing is being synchronized.",
+        "Could not load the Lens upgrade product. Please refresh and try again.",
+      );
+      return;
+    }
+
+    if (!isUploadOnly && !hasMatchingLensVariant) {
+      setCartError(
+        `Add a Lens upgrade variant priced at ${formatPrice(lensTotalMinor)} to enable checkout.`,
       );
       return;
     }
@@ -85,7 +96,7 @@ export default function ConfigurationReview({
     try {
       mappedPriceItems = mapLensCartPriceItems(
         isUploadOnly ? [] : priceItems,
-        lensVariantIdByCode,
+        lensVariantId,
         isUploadOnly ? 0 : lensTotalMinor,
       );
     } catch (error) {
@@ -113,6 +124,9 @@ export default function ConfigurationReview({
           "Selected Coating": selectedCoatings.length > 0 ? selectedCoatings.join(", ") : "None",
           "Selected Technology": selectedTechnologyName || "N/A",
           "Selected Technology Color": selectedTechnologyColor,
+          "Lens price breakdown": priceItems
+            .map((item) => `${item.label}: ${formatPrice(item.amountMinor)}`)
+            .join("; "),
           "Prescription Image": prescriptionImageName ?? prescriptionImage?.name ?? "None",
           PD: prescription?.pd || "N/A",
         };
@@ -132,8 +146,7 @@ export default function ConfigurationReview({
         fields[`items[${itemIndex}][properties][_lens_group]`] = groupId;
         fields[`items[${itemIndex}][properties][Lens]`] =
           `${lensTypeName} / ${lensIndexName}`;
-        fields[`items[${itemIndex}][properties][Lens price component]`] =
-          item.label;
+        fields[`items[${itemIndex}][properties][Lens price component]`] = item.label;
         if (index === 0) {
           Object.entries(rxProperties).forEach(([key, value]) => {
             fields[`items[${itemIndex}][properties][${key}]`] = value;
@@ -401,7 +414,7 @@ export default function ConfigurationReview({
               disabled={
                 isAddingToCart ||
                 pricingUnavailable ||
-                (!isUploadOnly && !checkoutPricingReady)
+                (!isUploadOnly && !canContinueToCart)
               }
               className="rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
