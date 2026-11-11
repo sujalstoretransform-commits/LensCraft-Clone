@@ -97,6 +97,11 @@ export default function LensTypeConfigurator({
                                         From {formatPrice(lens.prices[0].amountMinor)}
                                     </span>
                                 )}
+                                {lens.prices.length === 0 && (
+                                    <span className="mt-5 block text-sm font-semibold text-slate-500">
+                                        {lens.code === "clear" ? "Included" : "Price unavailable"}
+                                    </span>
+                                )}
                             </button>
                         );
                     })}

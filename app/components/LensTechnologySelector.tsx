@@ -129,6 +129,11 @@ export default function LensTechnologySelector({
                                                     From {formatPrice(technology.lensPrices[0].amountMinor)}
                                                 </p>
                                             )}
+                                            {technology.lensPrices?.length === 0 && (
+                                                <p className="mt-5 text-sm font-semibold text-slate-500">
+                                                    Price unavailable
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 </button>
