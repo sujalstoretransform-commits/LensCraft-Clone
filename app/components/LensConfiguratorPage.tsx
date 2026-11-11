@@ -231,14 +231,14 @@ export default function LensConfiguratorPage({
         variantTitle={product.variantTitle}
         image={product.image}
       />
-      {!catalogAvailable && (
+      {/* {!catalogAvailable && (
         <p
           role="status"
           className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900 md:px-12"
         >
           Lens options are temporarily unavailable. You can still view the configurator; please try again later.
         </p>
-      )}
+      )} */}
 
       <section className="border-b border-slate-200 px-5 py-5 md:px-12">
         <div className="w-full">

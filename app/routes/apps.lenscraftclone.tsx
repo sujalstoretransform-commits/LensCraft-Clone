@@ -2,7 +2,7 @@ import { redirect, useLoaderData } from "react-router";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import LensConfiguratorPage from "app/components/LensConfiguratorPage";
-import LensConfiguratorError from "app/components/LensConfiguratorError";
+// import LensConfiguratorError from "app/components/LensConfiguratorError";
 import {
   loadLensConfiguratorFallback,
   loadLensConfiguratorPage,
@@ -62,6 +62,6 @@ export default function AppProxyClonePage() {
   return <LensConfiguratorPage data={loaderData} />;
 }
 
-export function ErrorBoundary() {
-  return <LensConfiguratorError />;
-}
+// export function ErrorBoundary() {
+//   return <LensConfiguratorError />;
+// }
