@@ -62,12 +62,11 @@
         button.disabled = true;
         button.textContent = 'Loading lens options…';
 
-        const frameData = JSON.stringify({
+        const params = new URLSearchParams({
           productId: String(productId),
           variantId: String(variantId),
         });
-        document.cookie = `lenscraft_frame=${encodeURIComponent(frameData)}; path=/; max-age=3600; SameSite=Lax; Secure`;
-        window.location.href = '/apps/lenscraftclone';
+        window.location.href = `/apps/lenscraftclone?${params}`;
       });
     })();
   </script>
