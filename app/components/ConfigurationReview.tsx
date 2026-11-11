@@ -351,7 +351,7 @@ export default function ConfigurationReview({
 
           {pricingUnavailable ? (
             <p role="status" className="mt-4 text-sm text-amber-900">
-              Lens prices are not configured for {currencyCode}. You can review your selection, but checkout is unavailable until lens prices are configured for this currency.
+              Lens prices are unavailable right now. You can review your selection, but checkout is unavailable until pricing is restored.
             </p>
           ) : (
             <div className="mt-4 space-y-3 text-sm">

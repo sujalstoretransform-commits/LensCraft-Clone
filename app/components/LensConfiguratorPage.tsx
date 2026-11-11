@@ -10,7 +10,7 @@ import ConfigurationReview from "./ConfigurationReview";
 import { validatePrescription, type Prescription, } from "app/services/prescription";
 import {
   calculatePrice,
-  PriceUnavailableError,
+  PriceError,
 } from "app/services/lens-pricing";
 import PrescriptionSelection, { type PrescriptionMethodCode } from "./PrescriptionSelection";
 import CoatingReview, { type CoatingSelection } from "./CoatingReview";
@@ -40,6 +40,8 @@ export default function LensConfiguratorPage({
     product,
     catalog,
     lensIndices,
+    pricingAvailable,
+    catalogAvailable,
     checkoutPricingReady,
     lensVariantIdByCode,
     proxyPathPrefix,
@@ -79,7 +81,7 @@ export default function LensConfiguratorPage({
   const [selectedLensOptionCode, setSelectedLensOptionCode] = useState("clear");
   const [priceResult, setPriceResult] = useState<PriceResult | null>(null);
   const [priceError, setPriceError] = useState("");
-  const [priceUnavailable, setPriceUnavailable] = useState(false);
+  const [priceUnavailable, setPriceUnavailable] = useState(!pricingAvailable);
   const [prescriptionMethod, setPrescriptionMethod] = useState<PrescriptionMethodCode | null>(null);
   const [coatingSelection, setCoatingSelection] = useState<CoatingSelection>([]);
 
@@ -179,6 +181,11 @@ export default function LensConfiguratorPage({
     optionCodes: string[],
   ): boolean => {
     setPriceError("");
+    if (!pricingAvailable) {
+      setPriceResult(null);
+      setPriceUnavailable(true);
+      return true;
+    }
     setPriceUnavailable(false);
 
     try {
@@ -201,7 +208,7 @@ export default function LensConfiguratorPage({
       setPriceError(
         error instanceof Error ? error.message : "Unable to calculate price.",
       );
-      if (error instanceof PriceUnavailableError) {
+      if (error instanceof PriceError) {
         setPriceUnavailable(true);
         return true;
       }
@@ -224,6 +231,16 @@ export default function LensConfiguratorPage({
         variantTitle={product.variantTitle}
         image={product.image}
       />
+      {(!catalogAvailable || !pricingAvailable) && (
+        <p
+          role="status"
+          className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900 md:px-12"
+        >
+          {!catalogAvailable
+            ? "Lens options are temporarily unavailable. You can still view the configurator; please try again later."
+            : "Lens prices are temporarily unavailable. You can still configure and review your selection, but checkout is disabled until pricing is available."}
+        </p>
+      )}
 
       <section className="border-b border-slate-200 px-5 py-5 md:px-12">
         <div className="w-full">
@@ -255,7 +272,7 @@ export default function LensConfiguratorPage({
               setSelectedLensIndexCode("")
               setPriceResult(null)
               setPriceError("")
-              setPriceUnavailable(false)
+              setPriceUnavailable(!pricingAvailable)
               setPrescriptionErrors([]);
             }}
             onContinue={() => setStep(2)}
@@ -464,9 +481,10 @@ export default function LensConfiguratorPage({
             lensVariantIdByCode={lensVariantIdByCode}
             lensTotalMinor={prescriptionMethod === "upload" ? 0 : priceResult?.lensTotalMinor ?? 0}
             totalPriceMinor={prescriptionMethod === "upload" ? framePriceMinor : priceResult?.totalMinor ?? framePriceMinor}
-            pricingUnavailable={prescriptionMethod !== "upload" && priceUnavailable}
+            pricingUnavailable={priceUnavailable}
             checkoutPricingReady={
-              prescriptionMethod === "upload" || checkoutPricingReady
+              pricingAvailable &&
+              (prescriptionMethod === "upload" || checkoutPricingReady)
             }
             currencyCode={currencyCode}
             variantId={product.variantId}

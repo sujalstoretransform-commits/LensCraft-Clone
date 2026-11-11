@@ -3,11 +3,58 @@ import { loadLensCatalog } from "./lens-catalog.server";
 import { parseMajorToMinorUnits } from "app/utils/currency";
 import { syncShopLensPricing } from "./shopify-lens-pricing.server";
 
+type LensCatalog = Awaited<ReturnType<typeof loadLensCatalog>>;
+
 const getGraphqlErrors = (body: unknown) => {
   if (typeof body !== "object" || body === null) return [];
   const errors = "errors" in body ? body.errors : undefined;
   return Array.isArray(errors) ? errors : [];
 };
+
+function emptyLensCatalog(currencyCode: string): LensCatalog {
+  return {
+    currencyCode,
+    pricingAvailable: false,
+    lensTypes: [],
+    lensIndices: [],
+    lensOptions: [],
+    rules: [],
+    lensIndexCompatibilities: [],
+    lensTechnologies: [],
+    lensTechnologyIndexCompatibility: [],
+    prescriptionMethods: [],
+  };
+}
+
+function withoutCatalogPrices(catalog: LensCatalog): LensCatalog {
+  return {
+    ...catalog,
+    pricingAvailable: false,
+    lensTypes: catalog.lensTypes.map((lensType) => ({
+      ...lensType,
+      prices: [],
+    })),
+    lensIndices: catalog.lensIndices.map((lensIndex) => ({
+      ...lensIndex,
+      prices: [],
+    })),
+    lensOptions: catalog.lensOptions.map((option) => ({
+      ...option,
+      prices: [],
+      lensTechnologyOptions: option.lensTechnologyOptions.map((mapping) => ({
+        ...mapping,
+        lensTechnology: {
+          ...mapping.lensTechnology,
+          lensPrices: [],
+        },
+      })),
+    })),
+    lensTechnologies: catalog.lensTechnologies.map((technology) => ({
+      ...technology,
+      lensPrices: [],
+    })),
+  };
+}
 
 const safeImageUrl = (raw: string | null): string | null => {
   if (!raw) return null;
@@ -51,57 +98,48 @@ export async function loadLensConfiguratorPage(
     );
   }
 
-  let currencyResponse: Awaited<ReturnType<typeof admin.graphql>>;
-  let currencyJson: Awaited<ReturnType<typeof currencyResponse.json>>;
+  let currencyCode = "USD";
+  let currencyVerified = false;
   try {
-    currencyResponse = await admin.graphql(`#graphql
+    const currencyResponse = await admin.graphql(`#graphql
       query StoreCurrency {
         shop {
           currencyCode
         }
       }`);
-    currencyJson = await currencyResponse.json();
+    const currencyJson = await currencyResponse.json();
+    const currencyErrors = getGraphqlErrors(currencyJson);
+    const storeCurrencyCode = currencyJson.data?.shop?.currencyCode;
+
+    if (
+      currencyResponse.ok &&
+      currencyErrors.length === 0 &&
+      typeof storeCurrencyCode === "string" &&
+      /^[A-Z]{3}$/.test(storeCurrencyCode)
+    ) {
+      currencyCode = storeCurrencyCode;
+      currencyVerified = true;
+    } else {
+      console.error(
+        "Shop currency lookup failed; continuing without prices:",
+        currencyResponse.status,
+        currencyErrors,
+      );
+    }
   } catch (error) {
-    console.error("Shop currency lookup failed:", error);
-    throw new Response(
-      "Unable to verify this store's currency. Please try again or contact support.",
-      { status: 502 },
-    );
+    console.error("Shop currency lookup failed; continuing without prices:", error);
   }
 
-  const currencyErrors = getGraphqlErrors(currencyJson);
-  if (!currencyResponse.ok || currencyErrors.length > 0) {
-    console.error(
-      "Shop currency lookup failed with HTTP status:",
-      currencyResponse.status,
-      currencyErrors,
-    );
-    throw new Response(
-      "Unable to verify this store's currency. Please try again or contact support.",
-      { status: 502 },
-    );
-  }
-
-  const storeCurrencyCode = currencyJson.data?.shop?.currencyCode;
-  if (typeof storeCurrencyCode !== "string" || !/^[A-Z]{3}$/.test(storeCurrencyCode)) {
-    console.error("Shop currency lookup returned no valid currency code.");
-    throw new Response(
-      "Unable to verify this store's currency. Please try again or contact support.",
-      { status: 502 },
-    );
-  }
-
-  const currencyCode = storeCurrencyCode;
-  let catalog: Awaited<ReturnType<typeof loadLensCatalog>>;
+  let catalog: LensCatalog;
+  let catalogAvailable = true;
   try {
     catalog = await loadLensCatalog(currencyCode);
   } catch (error) {
     console.error("Lens catalog lookup failed:", error);
-    throw new Response(
-      "Unable to load lens options right now. Please try again or contact the store.",
-      { status: 503 },
-    );
+    catalog = emptyLensCatalog(currencyCode);
+    catalogAvailable = false;
   }
+  let pricingAvailable = currencyVerified && catalog.pricingAvailable;
 
   let product = {
     productId: null as string | null,
@@ -172,15 +210,6 @@ export async function loadLensConfiguratorPage(
       );
     }
 
-    const parsedFramePrice = Number(variant.price);
-    if (!Number.isFinite(parsedFramePrice) || parsedFramePrice < 0) {
-      console.error("Selected frame returned an invalid price.");
-      throw new Response(
-        "Unable to determine the selected frame price. Please contact the store.",
-        { status: 502 },
-      );
-    }
-
     product = {
       productId: frameSelection.productId,
       variantId: frameSelection.variantId,
@@ -189,19 +218,27 @@ export async function loadLensConfiguratorPage(
         variant.image?.url ?? variant.product.featuredImage?.url ?? null,
       ),
     };
-    try {
-      framePriceMinor = parseMajorToMinorUnits(
-        String(variant.price),
-        currencyCode,
-      );
-    } catch (error) {
-      console.error("Selected frame returned an invalid currency price:", error);
-      throw new Response(
-        "Unable to determine the selected frame price. Please contact the store.",
-        { status: 502 },
-      );
+
+    if (pricingAvailable) {
+      const parsedFramePrice = Number(variant.price);
+      if (!Number.isFinite(parsedFramePrice) || parsedFramePrice < 0) {
+        console.error("Selected frame returned an invalid price.");
+        pricingAvailable = false;
+      } else {
+        try {
+          framePriceMinor = parseMajorToMinorUnits(
+            String(variant.price),
+            currencyCode,
+          );
+        } catch (error) {
+          console.error("Selected frame returned an invalid currency price:", error);
+          pricingAvailable = false;
+        }
+      }
     }
   }
+
+  if (!pricingAvailable) catalog = withoutCatalogPrices(catalog);
 
   const lensIndices = catalog.lensIndices.map((index) => ({
     ...index,
@@ -210,21 +247,25 @@ export async function loadLensConfiguratorPage(
 
   let lensVariantIdByCode: Record<string, string> = {};
   let checkoutPricingReady = false;
-  try {
-    lensVariantIdByCode = await syncShopLensPricing(
-      admin,
-      shop,
-      currencyCode,
-      catalog,
-    );
-    checkoutPricingReady = true;
-  } catch (error) {
-    console.error("Shopify lens price synchronization failed:", error);
+  if (pricingAvailable) {
+    try {
+      lensVariantIdByCode = await syncShopLensPricing(
+        admin,
+        shop,
+        currencyCode,
+        catalog,
+      );
+      checkoutPricingReady = true;
+    } catch (error) {
+      console.error("Shopify lens price synchronization failed:", error);
+    }
   }
 
   return {
     shop,
     currencyCode,
+    pricingAvailable,
+    catalogAvailable,
     proxyPathPrefix: url.searchParams.get("path_prefix"),
     framePriceMinor,
     product,

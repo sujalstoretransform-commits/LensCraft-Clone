@@ -17,7 +17,7 @@ export default function LensConfiguratorError() {
           id="configurator-error-title"
           className="text-lg font-semibold text-amber-950"
         >
-          Unable to load lens prices
+          Unable to load configurator
         </h1>
         <p role="alert" className="mt-2 text-sm text-amber-900">
           {message}
