@@ -379,11 +379,6 @@ export default function ConfigurationReview({
               </div>
             </div>
           )}
-          {!pricingUnavailable && !checkoutPricingReady && !isUploadOnly && (
-            <p role="status" className="mt-4 text-sm text-amber-900">
-              Lens prices are shown for {currencyCode}, but checkout is unavailable until Shopify variant prices are synchronized.
-            </p>
-          )}
         </div>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <button
