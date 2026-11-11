@@ -286,3 +286,51 @@ export async function loadLensConfiguratorPage(
 export type LensConfiguratorPageData = Awaited<
   ReturnType<typeof loadLensConfiguratorPage>
 >;
+
+export async function loadLensConfiguratorFallback(
+  request: Request,
+): Promise<LensConfiguratorPageData> {
+  const url = new URL(request.url);
+  let catalog: LensCatalog;
+  let catalogAvailable = true;
+
+  try {
+    catalog = await loadLensCatalog("USD");
+  } catch (error) {
+    console.error("Fallback lens catalog lookup failed:", error);
+    catalog = emptyLensCatalog("USD");
+    catalogAvailable = false;
+  }
+
+  catalog = withoutCatalogPrices(catalog);
+
+  return {
+    shop: "",
+    currencyCode: "USD",
+    pricingAvailable: false,
+    catalogAvailable,
+    proxyPathPrefix: url.searchParams.get("path_prefix"),
+    framePriceMinor: 0,
+    product: {
+      productId: null,
+      variantId: null,
+      variantTitle: null,
+      image: null,
+    },
+    lensIndices: catalog.lensIndices.map((index) => ({
+      ...index,
+      refractiveIndex: Number(index.refractiveIndex),
+    })),
+    checkoutPricingReady: false,
+    lensVariantIdByCode: {},
+    catalog: {
+      lensTypes: catalog.lensTypes,
+      lensOptions: catalog.lensOptions,
+      lensIndexCompatibilities: catalog.lensIndexCompatibilities,
+      lensTechnology: catalog.lensTechnologies,
+      lensTechnologyIndexCompatibility:
+        catalog.lensTechnologyIndexCompatibility,
+      prescriptionMethods: catalog.prescriptionMethods,
+    },
+  };
+}

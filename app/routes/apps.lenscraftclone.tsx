@@ -3,7 +3,10 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import LensConfiguratorPage from "app/components/LensConfiguratorPage";
 import LensConfiguratorError from "app/components/LensConfiguratorError";
-import { loadLensConfiguratorPage } from "app/services/lens-configurator-page.server";
+import {
+  loadLensConfiguratorFallback,
+  loadLensConfiguratorPage,
+} from "app/services/lens-configurator-page.server";
 import { authenticate } from "../shopify.server";
 
 function parseNumericId(val: unknown): string | null {
@@ -29,12 +32,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return await loadLensConfiguratorPage(request, undefined, "appProxy");
   } catch (error) {
     console.error("App proxy configurator load failed:", error);
-    try {
-      return await loadLensConfiguratorPage(request, undefined, "appProxy");
-    } catch (fallbackError) {
-      console.error("Fallback configurator load failed:", fallbackError);
-      throw error;
-    }
+    return loadLensConfiguratorFallback(request);
   }
 }
 
