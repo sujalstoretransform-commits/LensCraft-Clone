@@ -364,7 +364,7 @@ export default function ConfigurationReview({
 
           {pricingUnavailable ? (
             <p role="status" className="mt-4 text-sm text-amber-900">
-              Lens prices are unavailable right now. You can review your selection, but checkout is unavailable until pricing is restored.
+              We couldn’t load lens prices right now. You can review your selection, but checkout is paused until pricing is restored.
             </p>
           ) : (
             <div className="mt-4 space-y-3 text-sm">
@@ -403,6 +403,14 @@ export default function ConfigurationReview({
           </button>
 
           <div className="flex flex-col items-start gap-2 sm:items-end">
+            {!isUploadOnly &&
+              lensVariantsLoaded &&
+              lensTotalMinor > 0 &&
+              !hasMatchingLensVariant && (
+                <p role="status" className="max-w-md text-sm text-amber-900 sm:text-right">
+                  This store doesn’t have a Lens upgrade variant priced at {formatPrice(lensTotalMinor)}. Please contact the store owner for help.
+                </p>
+              )}
             {cartError && (
               <p role="alert" className="text-sm text-red-600">
                 {cartError}
