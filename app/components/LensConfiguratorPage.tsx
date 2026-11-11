@@ -54,7 +54,7 @@ export default function LensConfiguratorPage({
     if (typeof window !== "undefined" && window.location.search) {
       const url = new URL(window.location.href);
       let changed = false;
-      for (const param of ["productId", "variantId", "currency"]) {
+      for (const param of ["productId", "variantId"]) {
         if (url.searchParams.has(param)) {
           url.searchParams.delete(param);
           changed = true;
@@ -231,14 +231,12 @@ export default function LensConfiguratorPage({
         variantTitle={product.variantTitle}
         image={product.image}
       />
-      {(!catalogAvailable || !pricingAvailable) && (
+      {!catalogAvailable && (
         <p
           role="status"
           className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900 md:px-12"
         >
-          {!catalogAvailable
-            ? "Lens options are temporarily unavailable. You can still view the configurator; please try again later."
-            : "Lens prices are temporarily unavailable. You can still configure and review your selection, but checkout is disabled until pricing is available."}
+          Lens options are temporarily unavailable. You can still view the configurator; please try again later.
         </p>
       )}
 

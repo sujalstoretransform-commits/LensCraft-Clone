@@ -5,6 +5,7 @@
     class="lenscraft-customize"
     data-product-id="{{ product.id }}"
     data-variant-id="{{ selected_variant.id }}"
+    data-currency="{{ cart.currency.iso_code | escape }}"
   >
     <button
       type="button"
@@ -66,6 +67,8 @@
           productId: String(productId),
           variantId: String(variantId),
         });
+        const currency = block.dataset.currency;
+        if (currency) params.set('currency', currency);
         window.location.href = `/apps/lenscraftclone?${params}`;
       });
     })();

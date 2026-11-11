@@ -42,11 +42,15 @@ export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const productId = parseNumericId(formData.get("productId"));
   const variantId = parseNumericId(formData.get("variantId"));
+  const currency = formData.get("currency");
   const params = new URLSearchParams();
 
   if (productId && variantId) {
     params.set("productId", productId);
     params.set("variantId", variantId);
+  }
+  if (typeof currency === "string" && /^[A-Za-z]{3}$/.test(currency)) {
+    params.set("currency", currency.toUpperCase());
   }
 
   const query = params.toString();
