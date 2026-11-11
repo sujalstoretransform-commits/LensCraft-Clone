@@ -1,10 +1,6 @@
 import prisma from "../db.server";
 import type { PrescriptionMethodCode } from "../components/PrescriptionSelection";
-import {
-    CurrencyRateUnavailableError,
-    getUsdExchangeRate,
-} from "./currency-cache.server";
-import { convertUsdMinorToCurrencyMinor } from "./currency-conversion.server";
+import { CurrencyRateUnavailableError, getUsdExchangeRate, convertUsdMinorToCurrencyMinor } from "./currency-pricing.server";
 import { getCurrencyMinorUnitDigits } from "app/utils/currency";
 
 export const LENS_CURRENCY_CODE = "USD";

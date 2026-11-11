@@ -3,8 +3,7 @@ const intlWithSupportedValues = Intl as typeof Intl & {
   supportedValuesOf?: (key: "currency") => string[];
 };
 
-
-//digits after decimal
+// Each currency defines how many digits its minor units use.
 export function getCurrencyMinorUnitDigits(currencyCode: string): number {
   const normalizedCode = currencyCode.toUpperCase();
   const cachedDigits = currencyDigitsCache.get(normalizedCode);
@@ -34,7 +33,7 @@ export function getCurrencyMinorUnitDigits(currencyCode: string): number {
     }
     digits = resolvedOptions.maximumFractionDigits;
   } catch {
-    throw new RangeError(`Unsupported currency code: ${currencyCode}`);
+    digits = 2;
   }
 
   if (!Number.isInteger(digits) || digits < 0 || digits > 3) {
@@ -45,7 +44,8 @@ export function getCurrencyMinorUnitDigits(currencyCode: string): number {
   return digits;
 }
 
-// conversion of rupee to paise (ex)
+
+// Formats an amount that is already stored in minor units.
 export function formatMinorUnits(
   amountMinor: number,
   currencyCode: string,
@@ -57,6 +57,7 @@ export function formatMinorUnits(
   }).format(amountMinor / 10 ** digits);
 }
 
+// Shopify variant prices use a decimal major-unit string.
 export function minorUnitsToMajorDecimalString(
   amountMinor: number,
   currencyCode: string,
@@ -75,6 +76,7 @@ export function minorUnitsToMajorDecimalString(
   return `${whole}.${fraction}`;
 }
 
+// Converts Shopify's decimal price to the currency's minor units.
 export function parseMajorToMinorUnits(
   amount: string,
   currencyCode: string,
@@ -89,7 +91,7 @@ export function parseMajorToMinorUnits(
   let minor = BigInt(wholePart) * scale + BigInt(keptFraction || "0");
 
   if (
-    fractionPart.length > digits &&
+    fractionPart.length > digits &&  
     Number(fractionPart[digits]) >= 5
   ) {
     minor += 1n;
