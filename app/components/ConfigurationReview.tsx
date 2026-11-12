@@ -146,9 +146,13 @@ export default function ConfigurationReview({
         }
       ).Shopify?.routes?.root ?? "/";
 
-    const root = shopifyRoot.endsWith("/")
-      ? shopifyRoot
-      : `${shopifyRoot}/`;
+    let rootPath = "/";
+    try {
+      rootPath = new URL(shopifyRoot, window.location.origin).pathname || "/";
+    } catch {
+      rootPath = "/";
+    }
+    const root = rootPath.endsWith("/") ? rootPath : `${rootPath}/`;
     const fields: Record<string, string> = {
       "items[0][id]": variantId,
       "items[0][quantity]": "1",
@@ -173,7 +177,7 @@ export default function ConfigurationReview({
 
     const form = document.createElement("form");
     form.method = "POST";
-    form.action = `${root}cart/add`;
+    form.action = new URL(`${root}cart/add`, window.location.origin).toString();
     form.acceptCharset = "UTF-8";
 
     Object.entries(fields).forEach(([name, value]) => {
