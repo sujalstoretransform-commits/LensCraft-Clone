@@ -56,6 +56,12 @@ export default function SavedPrescriptionSelector({
     const [selectedPrescription, setSelectedPrescription] =
         useState<SavedPrescription | null>(null);
 
+    const selectPrescription = (prescription: SavedPrescription) => {
+        setSelectedPrescription(prescription);
+        setValidationError("");
+        onSelectionChange();
+    };
+
     // Fetch prescription file through POST instead of exposing fileId in URL.
     const fetchPrescriptionFile = async (
         fileId: string,
@@ -251,6 +257,20 @@ export default function SavedPrescriptionSelector({
                     {prescriptions.map((prescription) => (
                         <article
                             key={prescription.id}
+                            role="button"
+                            tabIndex={0}
+                            aria-pressed={selectedPrescription?.id === prescription.id}
+                            aria-label={`Select prescription ${prescription.name}`}
+                            onClick={() => selectPrescription(prescription)}
+                            onKeyDown={(event) => {
+                                if (
+                                    event.target === event.currentTarget &&
+                                    (event.key === "Enter" || event.key === " ")
+                                ) {
+                                    event.preventDefault();
+                                    selectPrescription(prescription);
+                                }
+                            }}
                             className={`w-full rounded-xl border p-5 transition-all duration-200 ${
                                 selectedPrescription?.id === prescription.id
                                     ? "border-blue-600 bg-blue-50"
@@ -260,11 +280,7 @@ export default function SavedPrescriptionSelector({
                             <div className="flex items-center justify-between">
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setSelectedPrescription(prescription);
-                                        setValidationError("");
-                                        onSelectionChange();
-                                    }}
+                                    onClick={() => selectPrescription(prescription)}
                                     className="text-left"
                                 >
                                     <h3 className="text-base font-semibold text-slate-900">
@@ -383,11 +399,7 @@ export default function SavedPrescriptionSelector({
 
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setSelectedPrescription(prescription);
-                                    setValidationError("");
-                                    onSelectionChange();
-                                }}
+                                onClick={() => selectPrescription(prescription)}
                                 className="mt-4 text-sm font-semibold text-blue-600 transition hover:text-blue-700"
                             >
                                 Use this prescription →
