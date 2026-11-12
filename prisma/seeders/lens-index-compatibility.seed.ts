@@ -58,7 +58,7 @@ const lensCompatibilityMappings: LensTypeMapping[] = [
         ],
       },
       {
-        lensOptionCode: "sunglasses_tinted",
+        lensOptionCode: "tinted",
         technologies: [
           {
             technologyCode: "sunglasses_tinted",
@@ -125,7 +125,7 @@ const lensCompatibilityMappings: LensTypeMapping[] = [
         ],
       },
       {
-        lensOptionCode: "sunglasses_tinted",
+        lensOptionCode: "tinted",
         technologies: [
           {
             technologyCode: "sunglasses_tinted",
@@ -188,7 +188,7 @@ const lensCompatibilityMappings: LensTypeMapping[] = [
         ],
       },
       {
-        lensOptionCode: "sunglasses_tinted",
+        lensOptionCode: "tinted",
         technologies: [
           {
             technologyCode: "sunglasses_tinted",
