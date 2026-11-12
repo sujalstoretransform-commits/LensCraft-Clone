@@ -118,8 +118,8 @@ function getPriceSkuMappings(catalog: Catalog): Map<string, PriceSkuMapping> {
   for (const lensType of catalog.lensTypes) {
     for (const price of lensType.prices) {
       const sku = price.lensIndex
-        ? `lens_index:${price.lensIndex.code}`
-        : `lens_type:${lensType.code}`;
+        ? price.lensIndex.code
+        : lensType.code;
       addPriceSku(mappingsByPriceCode, price.code, sku, price.code);
     }
   }
@@ -129,7 +129,7 @@ function getPriceSkuMappings(catalog: Catalog): Map<string, PriceSkuMapping> {
       addPriceSku(
         mappingsByPriceCode,
         price.code,
-        `lens_option:${option.code}`,
+        option.code,
         price.code,
       );
     }
@@ -140,7 +140,7 @@ function getPriceSkuMappings(catalog: Catalog): Map<string, PriceSkuMapping> {
       addPriceSku(
         mappingsByPriceCode,
         price.code,
-        `lens_technology:${technology.code}`,
+        technology.code,
         price.code,
       );
     }

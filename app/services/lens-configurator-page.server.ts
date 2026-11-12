@@ -371,7 +371,7 @@ export async function loadLensConfiguratorPage(
         );
       } else if (priceMappings.missingPriceCodes.length > 0) {
         console.error(
-          "Shopify lens-upgrade variants are missing SKUs for price codes:",
+          "Shopify lens-upgrade prices could not be resolved for catalog price components (expected exact catalog-code SKUs):",
           priceMappings.missingPriceCodes,
         );
       }
