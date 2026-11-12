@@ -369,10 +369,10 @@ export async function loadLensConfiguratorPage(
           priceMappings.currencyCode,
           requestedCurrency,
         );
-      } else if (priceMappings.missingPriceNames.length > 0) {
+      } else if (priceMappings.missingPriceCodes.length > 0) {
         console.error(
-          "Shopify lens-upgrade variants are missing price names:",
-          priceMappings.missingPriceNames,
+          "Shopify lens-upgrade variants are missing SKUs for price codes:",
+          priceMappings.missingPriceCodes,
         );
       }
 

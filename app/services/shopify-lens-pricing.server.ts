@@ -20,7 +20,7 @@ type AdminGraphqlClient = {
 
 type ShopifyVariant = {
   id: string;
-  title: string;
+  sku: string | null;
   price?: string;
   contextualPricing?: {
     price?: { amount: string; currencyCode: string } | null;
@@ -50,7 +50,7 @@ type VariantPrice = {
 
 type PriceMappingResult = {
   priceByCode: Record<string, VariantPrice>;
-  missingPriceNames: string[];
+  missingPriceCodes: string[];
   currencyCode: string;
 };
 
@@ -91,10 +91,6 @@ async function executeGraphql<T>(
   return (body as { data: T }).data;
 }
 
-function normalize(value: string): string {
-  return value.toLocaleLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
 function getVariantId(variantGid: string): string {
   const match = /\/ProductVariant\/(\d+)$/.exec(variantGid);
   if (!match) {
@@ -105,87 +101,36 @@ function getVariantId(variantGid: string): string {
   return match[1];
 }
 
-type PriceName = { label: string; aliases: string[] };
-type LensIndexAlias = { displayName: string; refractiveIndex: unknown };
-
-function addPriceName(
-  namesByCode: Map<string, PriceName>,
+function addPriceCode(
+  labelsByCode: Map<string, string>,
   code: string,
   label: string,
-  aliases: string[],
 ) {
-  const normalizedAliases = [...new Set([label, ...aliases].map(normalize))];
-  const existing = namesByCode.get(code);
-  if (
-    existing &&
-    JSON.stringify(existing.aliases.map(normalize).sort()) !==
-      JSON.stringify(normalizedAliases.sort())
-  ) {
-    throw new ShopLensPricingError(
-      `Lens price "${code}" has inconsistent product-name mappings.`,
-    );
-  }
-  namesByCode.set(code, { label, aliases: [label, ...aliases] });
+  if (!labelsByCode.has(code)) labelsByCode.set(code, label);
 }
 
-function getPriceNames(catalog: Catalog): Map<string, PriceName> {
-  const namesByCode = new Map<string, PriceName>();
-  const indicesByCode = new Map<string, LensIndexAlias>(
-    catalog.lensIndices.map((index) => [index.code, index] as const),
-  );
+function getPriceCodes(catalog: Catalog): Map<string, string> {
+  const labelsByCode = new Map<string, string>();
 
   for (const lensType of catalog.lensTypes) {
     for (const price of lensType.prices) {
-      if (!price.lensIndex) {
-        addPriceName(namesByCode, price.code, lensType.name, [lensType.code]);
-        continue;
-      }
-
-      // Index prices are independent price components in the configurator.
-      const index = indicesByCode.get(price.lensIndex.code);
-      addPriceName(
-        namesByCode,
-        price.code,
-        `Index ${price.lensIndex.code}`,
-        [
-          price.lensIndex.code,
-          index?.displayName ?? "",
-          index ? String(Number(index.refractiveIndex).toFixed(2)) : "",
-          `Index ${index?.displayName ?? ""}`,
-        ].filter(Boolean),
-      );
+      addPriceCode(labelsByCode, price.code, price.code);
     }
   }
 
   for (const option of catalog.lensOptions) {
     for (const price of option.prices) {
-      addPriceName(namesByCode, price.code, option.name, [option.code]);
+      addPriceCode(labelsByCode, price.code, price.code);
     }
   }
 
   for (const technology of catalog.lensTechnologies) {
     for (const price of technology.lensPrices) {
-      addPriceName(namesByCode, price.code, technology.name, [technology.code]);
+      addPriceCode(labelsByCode, price.code, price.code);
     }
   }
 
-  return namesByCode;
-}
-
-function variantMatchesNameGroups(
-  variant: ShopifyVariant,
-  requiredNames: PriceName,
-): boolean {
-  const optionValues = variant.selectedOptions.map(({ value }) => normalize(value));
-  const title = normalize(variant.title);
-  return requiredNames.aliases.some((alias) => {
-    const normalizedAlias = normalize(alias);
-    return (
-      optionValues.includes(normalizedAlias) ||
-      title === normalizedAlias ||
-      title.includes(normalizedAlias)
-    );
-  });
+  return labelsByCode;
 }
 
 export async function loadShopLensPriceComponents(
@@ -194,8 +139,8 @@ export async function loadShopLensPriceComponents(
   catalog: Catalog,
   countryCode?: string,
 ): Promise<PriceMappingResult> {
-  const namesByCode = getPriceNames(catalog);
-  if (namesByCode.size === 0) {
+  const labelsByCode = getPriceCodes(catalog);
+  if (labelsByCode.size === 0) {
     throw new ShopLensPricingError("No active lens prices are configured.");
   }
   const variants: ShopifyVariant[] = [];
@@ -223,7 +168,7 @@ export async function loadShopLensPriceComponents(
               variants(first: ${VARIANT_PAGE_SIZE}, after: $cursor) {
                 nodes {
                   id
-                  title
+                  sku
                   selectedOptions { name value }
                   contextualPricing(context: { country: $country }) {
                     price { amount currencyCode }
@@ -240,7 +185,7 @@ export async function loadShopLensPriceComponents(
               variants(first: ${VARIANT_PAGE_SIZE}, after: $cursor) {
                 nodes {
                   id
-                  title
+                  sku
                   price
                   selectedOptions { name value }
                 }
@@ -290,15 +235,13 @@ export async function loadShopLensPriceComponents(
   }
 
   const priceByCode: Record<string, VariantPrice> = {};
-  const missingPriceNames: string[] = [];
+  const missingPriceCodes: string[] = [];
   let resolvedCurrencyCode: string | null = null;
 
-  for (const [code, requiredNames] of namesByCode) {
-    const matchingVariants = variants.filter((variant) =>
-      variantMatchesNameGroups(variant, requiredNames),
-    );
+  for (const [code, label] of labelsByCode) {
+    const matchingVariants = variants.filter((variant) => variant.sku === code);
     if (matchingVariants.length !== 1) {
-      missingPriceNames.push(requiredNames.label);
+      missingPriceCodes.push(label);
       continue;
     }
 
@@ -323,12 +266,12 @@ export async function loadShopLensPriceComponents(
       }
     });
     if (pricedVariants.length === 0) {
-      missingPriceNames.push(requiredNames.label);
+      missingPriceCodes.push(label);
       continue;
     }
 
     if (pricedVariants.length !== 1) {
-      missingPriceNames.push(requiredNames.label);
+      missingPriceCodes.push(label);
       continue;
     }
 
@@ -342,7 +285,7 @@ export async function loadShopLensPriceComponents(
 
   return {
     priceByCode,
-    missingPriceNames,
+    missingPriceCodes,
     currencyCode: resolvedCurrencyCode ?? currencyCode,
   };
 }

@@ -136,7 +136,7 @@ Rates are cached in PostgreSQL for six hours. If a refresh fails, a cached rate 
 
 Apply the Prisma migration during deployment with `npx prisma migrate deploy` (or the existing `npm run setup` command where appropriate).
 
-Lens types, indices, options, technologies, compatibility, and labels continue to come from the app catalog. Prices come from the store's existing `lens-upgrade` product: create a variant whose option value matches each database price component by name or code. The app reads matched Shopify prices (using contextual pricing for the visitor's country when available) and adds the frame and priced lens components to the cart. The `lens-price` Cart Transform merges those lines into one configured frame line with the calculated component total and prescription details. Unmatched price components remain unavailable. SKUs and manual currency conversion are not required, and the app does not create or update product variants.
+Lens types, indices, options, technologies, compatibility, and labels continue to come from the app catalog. Prices come from the store's existing `lens-upgrade` product: set each Shopify variant SKU to the exact matching database lens price `code`. The app reads matched Shopify prices (using contextual pricing for the visitor's country when available) and adds the frame and priced lens components to the cart. The `lens-price` Cart Transform merges those lines into one configured frame line with the calculated component total and prescription details. Price components without exactly one matching SKU remain unavailable. Manual currency conversion is handled separately, and the app does not create or update product variants.
 
 ## Gotchas / Troubleshooting
 
