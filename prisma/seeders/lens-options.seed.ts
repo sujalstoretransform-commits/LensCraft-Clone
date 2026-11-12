@@ -21,7 +21,7 @@ const lensTypeOptions = [
   },
   {
     code: "sunglasses_tinted",
-    name: "Sunglasses Tinted",
+    name: "Tinted",
     category: "lens_type" as const,
     description: "Tinted lenses for your preferred look and light conditions.",
   },
