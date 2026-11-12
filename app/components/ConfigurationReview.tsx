@@ -64,7 +64,7 @@ export default function ConfigurationReview({
 
   const canContinueToCart = isUploadOnly || lensVariantsLoaded;
 
-  const handleContinueToCart = () => {
+  const handleContinueToCart = async () => {
     if (!isUploadOnly && !lensVariantsLoaded) {
       setCartError(
         "The store is missing one or more lens price variants. Please contact the store owner.",
@@ -82,10 +82,7 @@ export default function ConfigurationReview({
     setIsAddingToCart(true);
     setCartError(null);
 
-    const groupId = crypto.randomUUID();
-
     let mappedPriceItems: ReturnType<typeof mapLensCartPriceItems>;
-
     try {
       mappedPriceItems = mapLensCartPriceItems(
         isUploadOnly ? [] : priceItems,
@@ -94,15 +91,12 @@ export default function ConfigurationReview({
       );
     } catch (error) {
       console.error("Lens cart pricing could not be verified:", error);
-
-      setCartError(
-        "Lens price mapping is incomplete. Please contact support.",
-      );
-
+      setCartError("Lens price mapping is incomplete. Please contact support.");
       setIsAddingToCart(false);
       return;
     }
 
+    const groupId = crypto.randomUUID();
     const lensDetails: Record<string, string> = isUploadOnly
       ? {
           "Prescription Image":
@@ -111,93 +105,101 @@ export default function ConfigurationReview({
             "Uploaded prescription",
         }
       : {
-          "Lens": `${lensTypeName} / ${lensIndexName}`,
+          Lens: `${lensTypeName} / ${lensIndexName}`,
           "Lens Type": lensTypeName,
           "Lens Option": lensOptionName,
           "Lens Index": lensIndexName,
           "Refractive Index": String(refractiveIndex),
-
           "Right SPH": prescription?.rightSph || "0",
           "Right CYL": prescription?.rightCyl || "0",
           "Right Axis": prescription?.rightAxis || "N/A",
-
           "Left SPH": prescription?.leftSph || "0",
           "Left CYL": prescription?.leftCyl || "0",
           "Left Axis": prescription?.leftAxis || "N/A",
-
           "Selected Coating":
             selectedCoatings.length > 0
               ? selectedCoatings.join(", ")
               : "None",
-
           "Selected Technology": selectedTechnologyName || "N/A",
-
           "Selected Technology Color": selectedTechnologyColor,
-
           "Lens price breakdown": priceItems
             .map(
               (item) =>
                 `${item.label}: ${formatPrice(item.amountMinor)}`,
             )
             .join("; "),
-
           "Prescription Image":
             prescriptionImageName ??
             prescriptionImage?.name ??
             "None",
-
-          "PD": prescription?.pd || "N/A",
+          PD: prescription?.pd || "N/A",
         };
 
-    // The frame is the parent cart item.
-    const fields: Record<string, string> = {
-      "items[0][id]": variantId,
-      "items[0][quantity]": "1",
+    const items = [
+      {
+        id: variantId,
+        quantity: 1,
+        properties: {
+          ...lensDetails,
+          _lens_group: groupId,
+          _lens_parent: "true",
+          _lens_details: JSON.stringify(lensDetails),
+        },
+      },
+      ...mappedPriceItems.map(({ item, variantId: lensVariantId }) => ({
+        id: lensVariantId,
+        quantity: 1,
+        properties: {
+          _lens_group: groupId,
+          "Lens price component": item.label,
+        },
+      })),
+    ];
 
-      "items[0][properties][_lens_group]": groupId,
-      "items[0][properties][_lens_parent]": "true",
+    try {
+      const shopifyRoot =
+        (
+          window as Window & {
+            Shopify?: {
+              routes?: {
+                root?: string;
+              };
+            };
+          }
+        ).Shopify?.routes?.root ?? "/";
 
-      "items[0][properties][_lens_details]":
-        JSON.stringify(lensDetails),
+      const root = shopifyRoot.endsWith("/")
+        ? shopifyRoot
+        : `${shopifyRoot}/`;
 
-      return_to: "/cart",
-    };
+      const response = await fetch(`${root}cart/add.js`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ items }),
+      });
 
-    // Add lens upgrade variants to the same group.
-    // Shopify Cart Transform will merge them into the frame.
-    mappedPriceItems.forEach(({ item, variantId }, index) => {
-      const itemIndex = index + 1;
+      const responseData = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          responseData?.description ||
+            responseData?.message ||
+            "Unable to add the configured frame to your cart.",
+        );
+      }
 
-      fields[`items[${itemIndex}][id]`] = variantId;
-      fields[`items[${itemIndex}][quantity]`] = "1";
-
-      fields[`items[${itemIndex}][properties][_lens_group]`] =
-        groupId;
-
-      fields[
-        `items[${itemIndex}][properties][Lens price component]`
-      ] = item.label;
-    });
-
-    // Submit using Shopify's storefront cart endpoint.
-    const form = document.createElement("form");
-
-    form.acceptCharset = "UTF-8";
-    form.method = "POST";
-    form.action = `${window.location.origin}/cart/add`;
-
-    Object.entries(fields).forEach(([name, value]) => {
-      const input = document.createElement("input");
-
-      input.type = "hidden";
-      input.name = name;
-      input.value = value;
-
-      form.appendChild(input);
-    });
-
-    document.body.appendChild(form);
-    form.submit();
+      window.location.assign(`${root}cart`);
+    } catch (error) {
+      console.error("Error adding configured frame to cart:", error);
+      setCartError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while adding your frame to the cart.",
+      );
+      setIsAddingToCart(false);
+    }
   };
 
   return (
@@ -296,17 +298,15 @@ export default function ConfigurationReview({
               </div>
 
               <span
-                className={`size-9 shrink-0 rounded-full border border-slate-300 ${
-                  selectedTechnologyColor === "GREY"
-                    ? "bg-slate-500"
-                    : "bg-amber-500"
-                }`}
+                className={`size-9 shrink-0 rounded-full border border-slate-300 ${selectedTechnologyColor === "GREY"
+                  ? "bg-slate-500"
+                  : "bg-amber-500"
+                  }`}
                 role="img"
-                aria-label={`Selected lens color: ${
-                  selectedTechnologyColor === "GREY"
-                    ? "Grey"
-                    : "Amber"
-                }`}
+                aria-label={`Selected lens color: ${selectedTechnologyColor === "GREY"
+                  ? "Grey"
+                  : "Amber"
+                  }`}
               />
             </div>
           </div>
