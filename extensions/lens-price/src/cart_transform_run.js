@@ -1,28 +1,10 @@
-const DETAIL_ATTRIBUTES = {
-  lens: "Lens",
-  lensType: "Lens Type",
-  lensOption: "Lens Option",
-  lensIndex: "Lens Index",
-  refractiveIndex: "Refractive Index",
-  rightSph: "Right SPH",
-  rightCyl: "Right CYL",
-  rightAxis: "Right Axis",
-  leftSph: "Left SPH",
-  leftCyl: "Left CYL",
-  leftAxis: "Left Axis",
-  selectedCoating: "Selected Coating",
-  selectedTechnology: "Selected Technology",
-  selectedTechnologyColor: "Selected Technology Color",
-  lensPriceBreakdown: "Lens price breakdown",
-  prescriptionImage: "Prescription Image",
-  pd: "PD",
-};
-
 export function cartTransformRun(input) {
   const groups = new Map();
 
+  // Group frame and lens add-on variants together.
   for (const line of input.cart.lines) {
     if (line.merchandise.__typename !== "ProductVariant") continue;
+
     const groupId = line.lensGroup?.value;
     if (!groupId) continue;
 
@@ -34,18 +16,49 @@ export function cartTransformRun(input) {
   const operations = [];
 
   for (const lines of groups.values()) {
-    const parentLine = lines.find((line) => line.lensParent?.value === "true");
+    const parentLine = lines.find(
+      (line) => line.lensParent?.value === "true"
+    );
+
     if (!parentLine || lines.length < 2) continue;
 
-    const quantity = Math.min(...lines.map((line) => line.quantity));
+    const quantity = Math.min(
+      ...lines.map((line) => line.quantity)
+    );
+
     if (quantity < 1) continue;
 
-    const attributes = Object.entries(DETAIL_ATTRIBUTES)
-      .map(([alias, key]) => {
-        const value = parentLine[alias]?.value;
-        return value != null ? { key, value } : null;
-      })
-      .filter((attribute) => attribute !== null);
+    let lensDetails = {};
+
+    try {
+      const rawDetails = parentLine.lensDetails?.value;
+      if (rawDetails) {
+        const parsed = JSON.parse(rawDetails);
+
+        if (
+          parsed &&
+          typeof parsed === "object" &&
+          !Array.isArray(parsed)
+        ) {
+          lensDetails = parsed;
+        }
+      }
+    } catch (error) {
+      console.error("Invalid lens details JSON:", error);
+      continue;
+    }
+
+    const attributes = Object.entries(lensDetails)
+      .filter(
+        ([key, value]) =>
+          typeof key === "string" &&
+          typeof value === "string" &&
+          value.length > 0
+      )
+      .map(([key, value]) => ({
+        key,
+        value,
+      }));
 
     operations.push({
       linesMerge: {
@@ -53,7 +66,9 @@ export function cartTransformRun(input) {
           cartLineId: line.id,
           quantity,
         })),
+
         parentVariantId: parentLine.merchandise.id,
+
         attributes,
       },
     });
@@ -61,3 +76,4 @@ export function cartTransformRun(input) {
 
   return { operations };
 }
+

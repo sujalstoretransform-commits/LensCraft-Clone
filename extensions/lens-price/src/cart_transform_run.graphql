@@ -1,65 +1,22 @@
+
 query CartTransformRunInput {
   cart {
     lines {
       id
       quantity
+
       lensGroup: attribute(key: "_lens_group") {
         value
       }
+
       lensParent: attribute(key: "_lens_parent") {
         value
       }
-      lens: attribute(key: "Lens") {
+
+      lensDetails: attribute(key: "_lens_details") {
         value
       }
-      lensType: attribute(key: "Lens Type") {
-        value
-      }
-      lensOption: attribute(key: "Lens Option") {
-        value
-      }
-      lensIndex: attribute(key: "Lens Index") {
-        value
-      }
-      refractiveIndex: attribute(key: "Refractive Index") {
-        value
-      }
-      rightSph: attribute(key: "Right SPH") {
-        value
-      }
-      rightCyl: attribute(key: "Right CYL") {
-        value
-      }
-      rightAxis: attribute(key: "Right Axis") {
-        value
-      }
-      leftSph: attribute(key: "Left SPH") {
-        value
-      }
-      leftCyl: attribute(key: "Left CYL") {
-        value
-      }
-      leftAxis: attribute(key: "Left Axis") {
-        value
-      }
-      selectedCoating: attribute(key: "Selected Coating") {
-        value
-      }
-      selectedTechnology: attribute(key: "Selected Technology") {
-        value
-      }
-      selectedTechnologyColor: attribute(key: "Selected Technology Color") {
-        value
-      }
-      lensPriceBreakdown: attribute(key: "Lens price breakdown") {
-        value
-      }
-      prescriptionImage: attribute(key: "Prescription Image") {
-        value
-      }
-      pd: attribute(key: "PD") {
-        value
-      }
+
       merchandise {
         __typename
         ... on ProductVariant {
