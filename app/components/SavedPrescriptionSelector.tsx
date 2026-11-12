@@ -263,36 +263,26 @@ export default function SavedPrescriptionSelector({
                     {prescriptions.map((prescription) => (
                         <article
                             key={prescription.id}
-                            role="button"
-                            tabIndex={0}
-                            aria-pressed={selectedPrescription?.id === prescription.id}
-                            aria-label={`Select prescription ${prescription.name}`}
-                            onClick={() => selectPrescription(prescription)}
-                            onKeyDown={(event) => {
-                                if (
-                                    event.target === event.currentTarget &&
-                                    (event.key === "Enter" || event.key === " ")
-                                ) {
-                                    event.preventDefault();
-                                    selectPrescription(prescription);
-                                }
-                            }}
                             className={`w-full rounded-xl border p-5 transition-all duration-200 ${
                                 selectedPrescription?.id === prescription.id
                                     ? "border-blue-600 bg-blue-50"
                                     : "border-slate-200 bg-white"
                             }`}
                         >
+                            <label className="block cursor-pointer rounded-lg focus-within:ring-2 focus-within:ring-blue-500">
+                                <input
+                                    className="sr-only"
+                                    type="radio"
+                                    name="saved-prescription"
+                                    checked={selectedPrescription?.id === prescription.id}
+                                    onChange={() => selectPrescription(prescription)}
+                                    aria-label={`Select prescription ${prescription.name}`}
+                                />
+                                <div>
                             <div className="flex items-center justify-between">
-                                <button
-                                    type="button"
-                                    onClick={() => selectPrescription(prescription)}
-                                    className="text-left"
-                                >
-                                    <h3 className="text-base font-semibold text-slate-900">
-                                        {prescription.name}
-                                    </h3>
-                                </button>
+                                <h3 className="text-base font-semibold text-slate-900">
+                                    {prescription.name}
+                                </h3>
 
                                 <span className="text-sm font-medium text-blue-600">
                                     {selectedPrescription?.id === prescription.id
@@ -355,6 +345,8 @@ export default function SavedPrescriptionSelector({
                                     {prescription.pd ?? "—"} mm
                                 </span>
                             </p>
+                                </div>
+                            </label>
 
                             {prescription.hasFile && (
                                 <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
