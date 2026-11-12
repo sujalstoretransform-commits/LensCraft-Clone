@@ -128,15 +128,9 @@ When you're ready to set up your app in production, you can follow [our deployme
 
 When you reach the step for [setting up environment variables](https://shopify.dev/docs/apps/deployment/web#set-env-vars), you also need to set the variable `NODE_ENV=production`.
 
-### Lens price currency conversion
-
-Lens catalog prices remain stored in USD. For non-USD Shopify base currencies, the app fetches USD exchange rates from [Open Exchange Rates](https://docs.openexchangerates.org/reference/latest-json) using the server-only `OPEN_EXCHANGE_RATES_APP_ID` secret. Configure this variable in each deployment environment; never expose it to storefront JavaScript.
-
-Rates are cached in PostgreSQL for six hours. If a refresh fails, a cached rate may be used for up to 72 hours after the provider's published timestamp. Without a valid rate inside that limit, converted prices and checkout are unavailable. USD always uses a fixed 1:1 rate. Shopify Markets conversion from the store's base currency to customer presentment currency remains Shopify-managed.
-
 Apply the Prisma migration during deployment with `npx prisma migrate deploy` (or the existing `npm run setup` command where appropriate).
 
-Lens types, indices, options, technologies, compatibility, and labels continue to come from the app catalog. Prices come from the store's existing `lens-upgrade` product. Set each Shopify variant SKU to the owning catalog record's exact code: lens type prices use the lens type code, index upgrades use the lens index code, option prices use the lens option code, and technology prices use the technology code. The app reads matched Shopify prices (using contextual pricing for the visitor's country when available) and adds the frame and priced lens components to the cart. The `lens-price` Cart Transform merges those lines into one configured frame line with the calculated component total and prescription details. Price components without exactly one matching SKU remain unavailable. Manual currency conversion is handled separately, and the app does not create or update product variants.
+Lens types, indices, options, technologies, compatibility, and labels come from the app catalog. Prices come directly from Shopify variants on the `lens-upgrade` product; set each variant SKU to the owning catalog record's exact code. The app reads matched Shopify prices (using contextual pricing for the visitor's country when available) and adds the frame and priced lens components to the cart. The `lens-price` Cart Transform merges those lines into one configured frame line with the calculated component total and prescription details. Catalog codes without exactly one matching SKU remain unavailable. Lens prices are not stored in the app database, and the app does not create or update product variants.
 
 ## Gotchas / Troubleshooting
 

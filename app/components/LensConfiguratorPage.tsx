@@ -78,7 +78,7 @@ export default function LensConfiguratorPage({
 
   const usesLensTechnology = [
     "light_adaptive",
-    "sunglasses_tinted",
+    "tinted",
     "sunglasses_polarized",
   ].includes(selectedLensOptionCode);
 
@@ -348,7 +348,7 @@ export default function LensConfiguratorPage({
 
               setSelectedLensIndexCode(defaultIndex?.code ?? "");
 
-              if (lensOptionCode === 'light_adaptive' || lensOptionCode === 'sunglasses_tinted' || lensOptionCode === 'sunglasses_polarized') {
+              if (lensOptionCode === 'light_adaptive' || lensOptionCode === 'tinted' || lensOptionCode === 'sunglasses_polarized') {
                 setStep(5)
               }
               else {
@@ -361,7 +361,7 @@ export default function LensConfiguratorPage({
           />
         )}
 
-        {step === 5 && ["light_adaptive", "sunglasses_tinted", "sunglasses_polarized"].includes(selectedLensOptionCode) && (
+        {step === 5 && ["light_adaptive", "tinted", "sunglasses_polarized"].includes(selectedLensOptionCode) && (
           <LensTechnologySelector
             currencyCode={currencyCode}
             technologies={
@@ -399,7 +399,7 @@ export default function LensConfiguratorPage({
             lensTypeCode={selectedVisionTypeCode}
             lensOptionCode={selectedLensOptionCode}
             onBack={() => {
-              if (selectedLensOptionCode === 'light_adaptive' || selectedLensOptionCode === 'sunglasses_tinted' || selectedLensOptionCode === 'sunglasses_polarized') {
+              if (selectedLensOptionCode === 'light_adaptive' || selectedLensOptionCode === 'tinted' || selectedLensOptionCode === 'sunglasses_polarized') {
                 setStep(5)
               }
               else {

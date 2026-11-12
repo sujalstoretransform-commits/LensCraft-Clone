@@ -45,15 +45,6 @@ const lensTypeOptions = [
   },
 ];
 
-const optionPrices = [
-  { code: "blue_light", amountMinor: 1500 },
-  { code: "light_adaptive", amountMinor: 2500 },
-  { code: "sunglasses_tinted", amountMinor: 2000 },
-  { code: "sunglasses_polarized", amountMinor: 3500 },
-  { code: "anti_fog", amountMinor: 500 },
-  { code: "blue_light_coating", amountMinor: 1000 },
-];
-
 async function seedLensOptions() {
   for (const option of lensTypeOptions) {
     await prisma.lensOption.upsert({
@@ -71,40 +62,7 @@ async function seedLensOptions() {
     });
   }
 
-  for (const price of optionPrices) {
-    const option = await prisma.lensOption.findUniqueOrThrow({
-      where: { code: price.code },
-      select: { id: true },
-    });
-
-    await prisma.lensPrice.upsert({
-      where: {
-        code: `option-${price.code}-usd`,
-      },
-      update: {
-        kind: "add_on",
-        amountMinor: price.amountMinor,
-        currencyCode: "USD",
-        lensTypeId: null,
-        lensIndexId: null,
-        lensOptionId: option.id,
-        active: true,
-      },
-      create: {
-        code: `option-${price.code}-usd`,
-        kind: "add_on",
-        amountMinor: price.amountMinor,
-        currencyCode: "USD",
-        lensTypeId: null,
-        lensIndexId: null,
-        lensOptionId: option.id,
-        active: true,
-      },
-    });
-
-  }
-
-  console.log("Lens options and prices seeded successfully.");
+  console.log("Lens options seeded successfully.");
 }
 
 seedLensOptions()

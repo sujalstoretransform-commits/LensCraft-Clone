@@ -1,22 +1,22 @@
-const DETAIL_ATTRIBUTES = [
-  "lens",
-  "lensType",
-  "lensOption",
-  "lensIndex",
-  "refractiveIndex",
-  "rightSph",
-  "rightCyl",
-  "rightAxis",
-  "leftSph",
-  "leftCyl",
-  "leftAxis",
-  "selectedCoating",
-  "selectedTechnology",
-  "selectedTechnologyColor",
-  "lensPriceBreakdown",
-  "prescriptionImage",
-  "pd",
-];
+const DETAIL_ATTRIBUTES = {
+  lens: "Lens",
+  lensType: "Lens Type",
+  lensOption: "Lens Option",
+  lensIndex: "Lens Index",
+  refractiveIndex: "Refractive Index",
+  rightSph: "Right SPH",
+  rightCyl: "Right CYL",
+  rightAxis: "Right Axis",
+  leftSph: "Left SPH",
+  leftCyl: "Left CYL",
+  leftAxis: "Left Axis",
+  selectedCoating: "Selected Coating",
+  selectedTechnology: "Selected Technology",
+  selectedTechnologyColor: "Selected Technology Color",
+  lensPriceBreakdown: "Lens price breakdown",
+  prescriptionImage: "Prescription Image",
+  pd: "PD",
+};
 
 export function cartTransformRun(input) {
   const groups = new Map();
@@ -40,9 +40,12 @@ export function cartTransformRun(input) {
     const quantity = Math.min(...lines.map((line) => line.quantity));
     if (quantity < 1) continue;
 
-    const attributes = DETAIL_ATTRIBUTES.map((key) => parentLine[key])
-      .filter((attribute) => attribute?.value != null)
-      .map(({ key, value }) => ({ key, value }));
+    const attributes = Object.entries(DETAIL_ATTRIBUTES)
+      .map(([alias, key]) => {
+        const value = parentLine[alias]?.value;
+        return value != null ? { key, value } : null;
+      })
+      .filter((attribute) => attribute !== null);
 
     operations.push({
       linesMerge: {

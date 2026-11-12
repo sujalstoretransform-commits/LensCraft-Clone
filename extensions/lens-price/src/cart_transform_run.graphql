@@ -10,71 +10,54 @@ query CartTransformRunInput {
         value
       }
       lens: attribute(key: "Lens") {
-        key
         value
       }
       lensType: attribute(key: "Lens Type") {
-        key
         value
       }
       lensOption: attribute(key: "Lens Option") {
-        key
         value
       }
       lensIndex: attribute(key: "Lens Index") {
-        key
         value
       }
       refractiveIndex: attribute(key: "Refractive Index") {
-        key
         value
       }
       rightSph: attribute(key: "Right SPH") {
-        key
         value
       }
       rightCyl: attribute(key: "Right CYL") {
-        key
         value
       }
       rightAxis: attribute(key: "Right Axis") {
-        key
         value
       }
       leftSph: attribute(key: "Left SPH") {
-        key
         value
       }
       leftCyl: attribute(key: "Left CYL") {
-        key
         value
       }
       leftAxis: attribute(key: "Left Axis") {
-        key
         value
       }
       selectedCoating: attribute(key: "Selected Coating") {
-        key
         value
       }
       selectedTechnology: attribute(key: "Selected Technology") {
-        key
         value
       }
       selectedTechnologyColor: attribute(key: "Selected Technology Color") {
-        key
         value
       }
       lensPriceBreakdown: attribute(key: "Lens price breakdown") {
-        key
         value
       }
       prescriptionImage: attribute(key: "Prescription Image") {
-        key
         value
       }
       pd: attribute(key: "PD") {
-        key
         value
       }
       merchandise {

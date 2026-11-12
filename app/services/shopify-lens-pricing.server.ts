@@ -25,7 +25,6 @@ type ShopifyVariant = {
   contextualPricing?: {
     price?: { amount: string; currencyCode: string } | null;
   } | null;
-  selectedOptions: { name: string; value: string }[];
 };
 
 type ProductVariantPage = {
@@ -101,52 +100,25 @@ function getVariantId(variantGid: string): string {
   return match[1];
 }
 
-type PriceSkuMapping = { sku: string; label: string };
+function getCatalogCodes(catalog: Catalog): Map<string, string> {
+  const labelsByCode = new Map<string, string>();
+  const add = (code: string, label: string) => {
+    if (!labelsByCode.has(code)) labelsByCode.set(code, label);
+  };
 
-function addPriceSku(
-  mappingsByPriceCode: Map<string, PriceSkuMapping>,
-  priceCode: string,
-  sku: string,
-  label: string,
-) {
-  mappingsByPriceCode.set(priceCode, { sku, label });
-}
-
-function getPriceSkuMappings(catalog: Catalog): Map<string, PriceSkuMapping> {
-  const mappingsByPriceCode = new Map<string, PriceSkuMapping>();
-
-  for (const lensType of catalog.lensTypes) {
-    for (const price of lensType.prices) {
-      const sku = price.lensIndex
-        ? price.lensIndex.code
-        : lensType.code;
-      addPriceSku(mappingsByPriceCode, price.code, sku, price.code);
-    }
+  for (const lensType of catalog.lensTypes) add(lensType.code, lensType.name);
+  for (const lensIndex of catalog.lensIndices) {
+    add(lensIndex.code, `Index ${lensIndex.code}`);
   }
-
   for (const option of catalog.lensOptions) {
-    for (const price of option.prices) {
-      addPriceSku(
-        mappingsByPriceCode,
-        price.code,
-        option.code,
-        price.code,
-      );
-    }
+    // Clear lenses are included in the base lens price and have no separate SKU.
+    if (option.code !== "clear") add(option.code, option.name);
   }
-
   for (const technology of catalog.lensTechnologies) {
-    for (const price of technology.lensPrices) {
-      addPriceSku(
-        mappingsByPriceCode,
-        price.code,
-        technology.code,
-        price.code,
-      );
-    }
+    add(technology.code, technology.name);
   }
 
-  return mappingsByPriceCode;
+  return labelsByCode;
 }
 
 export async function loadShopLensPriceComponents(
@@ -155,9 +127,9 @@ export async function loadShopLensPriceComponents(
   catalog: Catalog,
   countryCode?: string,
 ): Promise<PriceMappingResult> {
-  const priceSkuMappings = getPriceSkuMappings(catalog);
-  if (priceSkuMappings.size === 0) {
-    throw new ShopLensPricingError("No active lens prices are configured.");
+  const labelsByCode = getCatalogCodes(catalog);
+  if (labelsByCode.size === 0) {
+    throw new ShopLensPricingError("No active lens catalog codes are configured.");
   }
   const variants: ShopifyVariant[] = [];
   let cursor: string | null = null;
@@ -185,7 +157,6 @@ export async function loadShopLensPriceComponents(
                 nodes {
                   id
                   sku
-                  selectedOptions { name value }
                   contextualPricing(context: { country: $country }) {
                     price { amount currencyCode }
                   }
@@ -203,7 +174,6 @@ export async function loadShopLensPriceComponents(
                   id
                   sku
                   price
-                  selectedOptions { name value }
                 }
                 pageInfo { hasNextPage endCursor }
               }
@@ -254,12 +224,12 @@ export async function loadShopLensPriceComponents(
   const missingPriceCodes: string[] = [];
   let resolvedCurrencyCode: string | null = null;
 
-  for (const [priceCode, mapping] of priceSkuMappings) {
+  for (const [code, label] of labelsByCode) {
     const matchingVariants = variants.filter(
-      (variant) => variant.sku === mapping.sku,
+      (variant) => variant.sku === code,
     );
     if (matchingVariants.length !== 1) {
-      missingPriceCodes.push(`${mapping.label} (SKU ${mapping.sku})`);
+      missingPriceCodes.push(`${label} (SKU ${code})`);
       continue;
     }
 
@@ -284,18 +254,18 @@ export async function loadShopLensPriceComponents(
       }
     });
     if (pricedVariants.length === 0) {
-      missingPriceCodes.push(`${mapping.label} (SKU ${mapping.sku})`);
+      missingPriceCodes.push(`${label} (SKU ${code})`);
       continue;
     }
 
     if (pricedVariants.length !== 1) {
-      missingPriceCodes.push(`${mapping.label} (SKU ${mapping.sku})`);
+      missingPriceCodes.push(`${label} (SKU ${code})`);
       continue;
     }
 
     const variant = pricedVariants[0].variant;
     resolvedCurrencyCode ??= pricedVariants[0].currencyCode;
-    priceByCode[priceCode] = {
+    priceByCode[code] = {
       variantId: getVariantId(variant.id),
       amountMinor: pricedVariants[0].amountMinor,
     };
@@ -313,13 +283,12 @@ export function applyShopLensPricesToCatalog(
   priceByCode: Record<string, VariantPrice>,
   currencyCode: string,
 ): Catalog {
-  const applyPrices = <T extends { code: string; amountMinor: number }>(prices: T[]) =>
-    prices.flatMap((price) => {
-      const shopPrice = priceByCode[price.code];
-      return shopPrice
-        ? [{ ...price, amountMinor: shopPrice.amountMinor, currencyCode }]
-        : [];
-    });
+  const getPrice = (code: string, kind: string) => {
+    const shopPrice = priceByCode[code];
+    return shopPrice
+      ? [{ code, kind, amountMinor: shopPrice.amountMinor, currencyCode }]
+      : [];
+  };
 
   return {
     ...catalog,
@@ -327,26 +296,39 @@ export function applyShopLensPricesToCatalog(
     pricingAvailable: catalog.pricingAvailable,
     lensTypes: catalog.lensTypes.map((lensType) => ({
       ...lensType,
-      prices: applyPrices(lensType.prices),
+      prices: [
+        ...getPrice(lensType.code, "base"),
+        ...catalog.lensIndices.flatMap((lensIndex) =>
+          getPrice(lensIndex.code, "upgrade").map((price) => ({
+            ...price,
+            lensIndex: { code: lensIndex.code },
+          })),
+        ),
+      ],
     })),
     lensIndices: catalog.lensIndices.map((lensIndex) => ({
       ...lensIndex,
-      prices: applyPrices(lensIndex.prices),
+      prices: catalog.lensTypes.flatMap((lensType) =>
+        getPrice(lensIndex.code, "upgrade").map((price) => ({
+          ...price,
+          lensType: { code: lensType.code },
+        })),
+      ),
     })),
     lensOptions: catalog.lensOptions.map((option) => ({
       ...option,
-      prices: applyPrices(option.prices),
+      prices: getPrice(option.code, option.category === "add_on" ? "add_on" : "upgrade"),
       lensTechnologyOptions: option.lensTechnologyOptions.map((mapping) => ({
         ...mapping,
         lensTechnology: {
           ...mapping.lensTechnology,
-          lensPrices: applyPrices(mapping.lensTechnology.lensPrices),
+          lensPrices: getPrice(mapping.lensTechnology.code, "upgrade"),
         },
       })),
     })),
     lensTechnologies: catalog.lensTechnologies.map((technology) => ({
       ...technology,
-      lensPrices: applyPrices(technology.lensPrices),
+      lensPrices: getPrice(technology.code, "upgrade"),
     })),
   };
 }

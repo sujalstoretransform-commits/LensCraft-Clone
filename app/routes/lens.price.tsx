@@ -1,6 +1,11 @@
 import type { ActionFunctionArgs } from "react-router";
 import { loadLensCatalog } from "app/services/lens-catalog.server";
 import { getAuthenticatedShopCurrency } from "app/services/shop-currency.server";
+import { authenticate } from "app/shopify.server";
+import {
+    applyShopLensPricesToCatalog,
+    loadShopLensPriceComponents,
+} from "app/services/shopify-lens-pricing.server";
 import {
     calculatePrice,
     PriceError,
@@ -18,10 +23,31 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     try {
-        const currencyCode = await getAuthenticatedShopCurrency(request);
-        const catalog = await loadLensCatalog(currencyCode)
+        const { admin } = await authenticate.admin(request);
+        const storeCurrency = await getAuthenticatedShopCurrency(request);
+        const url = new URL(request.url);
+        const requestedCurrency = url.searchParams.get("currency")?.toUpperCase();
+        const country = url.searchParams.get("country")?.toUpperCase();
+        const countryCode = country && /^[A-Z]{2}$/.test(country) ? country : undefined;
+        const baseCatalog = await loadLensCatalog(storeCurrency);
+        const priceMappings = await loadShopLensPriceComponents(
+            admin,
+            storeCurrency,
+            baseCatalog,
+            countryCode,
+        );
+        if (requestedCurrency && priceMappings.currencyCode !== requestedCurrency) {
+            throw new PriceUnavailableError(
+                "Lens prices are unavailable in the requested currency.",
+            );
+        }
+        const catalog = applyShopLensPricesToCatalog(
+            baseCatalog,
+            priceMappings.priceByCode,
+            priceMappings.currencyCode,
+        );
         const price = calculatePrice(catalog, selection, framePriceMinor)
-        return Response.json({ currency: currencyCode, ...price })
+        return Response.json({ currency: priceMappings.currencyCode, ...price })
     } catch (e) {
         if (e instanceof Response) throw e;
         if (e instanceof PriceUnavailableError) {

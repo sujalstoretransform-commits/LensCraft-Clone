@@ -12,7 +12,7 @@ const technologyOptionMappings = {
       "in_car_light_adaptive_blue_light",
     ],
 
-    sunglasses_tinted: [
+    tinted: [
       "sunglasses_tinted",
       "sunglasses_tinted_blue_light",
     ],
@@ -32,7 +32,7 @@ const technologyOptionMappings = {
       "in_car_light_adaptive_blue_light",
     ],
 
-    sunglasses_tinted: [
+    tinted: [
       "sunglasses_tinted",
       "sunglasses_tinted_blue_light",
     ],
@@ -51,7 +51,7 @@ const technologyOptionMappings = {
       "transitions_xtractive",
     ],
 
-    sunglasses_tinted: [
+    tinted: [
       "sunglasses_tinted",
       "sunglasses_tinted_blue_light",
     ],

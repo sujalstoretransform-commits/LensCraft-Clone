@@ -1,40 +1,18 @@
 import prisma from "../db.server";
 import type { PrescriptionMethodCode } from "../components/PrescriptionSelection";
-import { CurrencyRateUnavailableError, getUsdExchangeRate, convertUsdMinorToCurrencyMinor } from "./currency-pricing.server";
-import { getCurrencyMinorUnitDigits } from "app/utils/currency";
 
 export const LENS_CURRENCY_CODE = "USD";
 
 type CatalogPrice = {
+    code: string;
+    kind: string;
     amountMinor: number;
     currencyCode: string;
+    lensIndex?: { code: string } | null;
+    lensType?: { code: string } | null;
 };
 
-const convertPrices = <T extends CatalogPrice>(
-    prices: T[],
-    currencyCode: string,
-    rate: string | null,
-): T[] => {
-    if (rate === null) return [];
-    return prices.map((price) => ({
-        ...price,
-        amountMinor: convertUsdMinorToCurrencyMinor(
-            price.amountMinor,
-            rate,
-            currencyCode,
-        ),
-        currencyCode,
-    }));
-};
-
-const priceFields = {
-    code: true,
-    kind: true,
-    amountMinor: true,
-    currencyCode: true,
-};
-
-const getLensTypes = (currencyCode: string) => {
+const getLensTypes = () => {
     return prisma.lensType.findMany({
         where: { active: true },
         select: {
@@ -42,15 +20,11 @@ const getLensTypes = (currencyCode: string) => {
             name: true,
             family: true,
             description: true,
-            prices: {
-                where: { active: true, currencyCode },
-                select: { ...priceFields, lensIndex: { select: { code: true } } },
-            },
         },
     });
 }
 
-const getLensIndices = (currencyCode: string) => {
+const getLensIndices = () => {
     return prisma.lensIndex.findMany({
         where: { active: true },
         select: {
@@ -69,28 +43,12 @@ const getLensIndices = (currencyCode: string) => {
                 }
             },
 
-            prices: {
-                where: {
-                    active: true,
-                    currencyCode: currencyCode,
-                },
-                select: {
-                    code: true,
-                    kind: true,
-                    amountMinor: true,
-                    currencyCode: true,
-                    lensType: {
-                        select: { code: true }
-                    }
-                },
-                orderBy: { amountMinor: "asc" }
-            }
         },
         orderBy: { refractiveIndex: "asc" }
     });
 }
 
-const getLensOptions = (currencyCode: string) => {
+const getLensOptions = () => {
     return prisma.lensOption.findMany({
         where: {
             active: true,
@@ -103,13 +61,6 @@ const getLensOptions = (currencyCode: string) => {
             name: true,
             category: true,
             description: true,
-            prices: {
-                where: {
-                    active: true,
-                    currencyCode,
-                },
-                select: priceFields,
-            },
             rules: {
                 where: {
                     active: true,
@@ -140,13 +91,6 @@ const getLensOptions = (currencyCode: string) => {
                             name: true,
                             description: true,
                             sortOrder: true,
-                            lensPrices: {
-                                where: {
-                                    active: true,
-                                    currencyCode,
-                                },
-                                select: priceFields,
-                            },
                         },
                     },
                 },
@@ -211,7 +155,7 @@ const getLensTechnologyIndexCompatibility = () => {
     });
 }
 
-const getLensTechnologies = (currencyCode: string) => {
+const getLensTechnologies = () => {
     return prisma.lensTechnology.findMany({
         where: { active: true },
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -221,10 +165,6 @@ const getLensTechnologies = (currencyCode: string) => {
             name: true,
             description: true,
             sortOrder: true,
-            lensPrices: {
-                where: { active: true, currencyCode },
-                select: priceFields,
-            },
         },
     });
 }
@@ -265,57 +205,36 @@ export const loadLensCatalog = async (currencyCode = LENS_CURRENCY_CODE) => {
         lensTechnologyIndexCompatibility,
         prescriptionMethods,
     ] = await Promise.all([
-        getLensTypes(LENS_CURRENCY_CODE),
-        getLensIndices(LENS_CURRENCY_CODE),
-        getLensOptions(LENS_CURRENCY_CODE),
+        getLensTypes(),
+        getLensIndices(),
+        getLensOptions(),
         getRules(),
         getLensIndexCompatibilities(),
-        getLensTechnologies(LENS_CURRENCY_CODE),
+        getLensTechnologies(),
         getLensTechnologyIndexCompatibility(),
         getPrescriptionMethods(),
     ]);
 
-    let rate: string | null = null;
-    try {
-        getCurrencyMinorUnitDigits(targetCurrencyCode);
-        rate = (await getUsdExchangeRate(targetCurrencyCode)).rate;
-    } catch (error) {
-        if (
-            error instanceof CurrencyRateUnavailableError ||
-            error instanceof RangeError
-        ) {
-            console.warn(
-                `Lens pricing is unavailable for ${targetCurrencyCode}; the configurator will remain available without prices.`,
-            );
-        } else {
-            throw error;
-        }
-    }
-
     return {
         currencyCode: targetCurrencyCode,
-        pricingAvailable: rate !== null,
+        pricingAvailable: true,
         lensTypes: lensTypes.map((lensType) => ({
             ...lensType,
-            prices: convertPrices(lensType.prices, targetCurrencyCode, rate),
+            prices: [] as CatalogPrice[],
         })),
         lensIndices: lensIndices.map((lensIndex) => ({
             ...lensIndex,
-            prices: convertPrices(lensIndex.prices, targetCurrencyCode, rate),
+            prices: [] as CatalogPrice[],
         })),
         lensOptions: lensOptions.map((lensOption) => ({
             ...lensOption,
-            prices: convertPrices(lensOption.prices, targetCurrencyCode, rate),
+            prices: [] as CatalogPrice[],
             lensTechnologyOptions: lensOption.lensTechnologyOptions.map(
                 (mapping) => ({
                     ...mapping,
                     lensTechnology: {
                         ...mapping.lensTechnology,
-                        lensPrices: convertPrices(
-                            mapping.lensTechnology.lensPrices,
-                            targetCurrencyCode,
-                            rate,
-                        ),
+                        lensPrices: [] as CatalogPrice[],
                     },
                 }),
             ),
@@ -324,11 +243,7 @@ export const loadLensCatalog = async (currencyCode = LENS_CURRENCY_CODE) => {
         lensIndexCompatibilities,
         lensTechnologies: lensTechnologies.map((technology) => ({
             ...technology,
-            lensPrices: convertPrices(
-                technology.lensPrices,
-                targetCurrencyCode,
-                rate,
-            ),
+            lensPrices: [] as CatalogPrice[],
         })),
         lensTechnologyIndexCompatibility,
         prescriptionMethods,

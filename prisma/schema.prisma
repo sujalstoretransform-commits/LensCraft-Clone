@@ -27,29 +27,6 @@ model Session {
   refreshTokenExpires DateTime?
 }
 
-model ExchangeRateCache {
-  currencyCode      String   @id @db.VarChar(3)
-  usdRate           Decimal  @db.Decimal(30, 18)
-  fetchedAt         DateTime
-  providerTimestamp DateTime
-  updatedAt         DateTime @updatedAt
-}
-
-model ShopLensVariantMapping {
-  id                String   @id @default(cuid())
-  shop              String
-  lensPriceCode     String
-  productGid        String
-  variantGid        String
-  currencyCode      String   @db.VarChar(3)
-  syncedAmountMinor Int
-  syncedAt          DateTime @default(now())
-
-  @@unique([shop, lensPriceCode])
-  @@unique([shop, variantGid])
-  @@index([shop, productGid])
-}
-
 enum LensFamily {
   clear
   blue_light
@@ -58,12 +35,6 @@ enum LensFamily {
   polarized
   readers
   non_prescription
-}
-
-enum LensPriceKind {
-  base
-  upgrade
-  add_on
 }
 
 enum LensRuleKind {
@@ -108,7 +79,6 @@ model LensType {
   family                LensFamily
   description           String?
   active                Boolean                  @default(true)
-  prices                LensPrice[]
   rules                 LensCompatibilityRule[]
   supplierMappings      SupplierLensMapping[]
   indexCompatibilities  LensIndexCompatibility[] @relation("LensTypeIndexCompatibilities")
@@ -125,7 +95,6 @@ model LensIndex {
   displayName              String
   refractiveIndex          Decimal                  @db.Decimal(3, 2)
   active                   Boolean                  @default(true)
-  prices                   LensPrice[]
   rules                    LensCompatibilityRule[]
   supplierMappings         SupplierLensMapping[]
   createdAt                DateTime                 @default(now())
@@ -133,31 +102,6 @@ model LensIndex {
   lensIndexCompatibilities LensIndexCompatibility[]
 
   @@index([active])
-}
-
-model LensPrice {
-  id           String        @id @default(cuid())
-  code         String        @unique
-  kind         LensPriceKind
-  amountMinor  Int
-  currencyCode String        @db.VarChar(3)
-  lensTypeId   String?
-  lensType     LensType?     @relation(fields: [lensTypeId], references: [id], onDelete: Cascade)
-  lensIndexId  String?
-  lensIndex    LensIndex?    @relation(fields: [lensIndexId], references: [id], onDelete: Cascade)
-  lensOptionId String?
-  lensOption   LensOption?   @relation(fields: [lensOptionId], references: [id], onDelete: Cascade)
-
-  lensTechnologyId String?
-  lensTechnology   LensTechnology? @relation(fields: [lensTechnologyId], references: [id], onDelete: Cascade)
-
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([active, kind])
-  @@index([lensTypeId, lensIndexId, currencyCode, active])
-  @@index([lensOptionId, currencyCode, active])
 }
 
 model LensCompatibilityRule {
@@ -235,7 +179,6 @@ model LensOption {
   category                 LensOptionCategory
   description              String?
   active                   Boolean                  @default(true)
-  prices                   LensPrice[]
   rules                    LensCompatibilityRule[]
   createdAt                DateTime                 @default(now())
   updatedAt                DateTime                 @updatedAt
@@ -256,8 +199,6 @@ model LensTechnology {
   updatedAt                DateTime                 @updatedAt
   lensTechnologyOptions    LensTechnologyOption[]
   lensIndexCompatibilities LensIndexCompatibility[]
-  lensPrices               LensPrice[]
-
   @@index([active, sortOrder])
 }
 
