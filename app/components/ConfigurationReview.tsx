@@ -64,7 +64,7 @@ export default function ConfigurationReview({
 
   const canContinueToCart = isUploadOnly || lensVariantsLoaded;
 
-  const handleContinueToCart = async () => {
+  const handleContinueToCart = () => {
     if (!isUploadOnly && !lensVariantsLoaded) {
       setCartError(
         "The store is missing one or more lens price variants. Please contact the store owner.",
@@ -135,71 +135,57 @@ export default function ConfigurationReview({
           PD: prescription?.pd || "N/A",
         };
 
-    const items = [
-      {
-        id: variantId,
-        quantity: 1,
-        properties: {
-          ...lensDetails,
-          _lens_group: groupId,
-          _lens_parent: "true",
-          _lens_details: JSON.stringify(lensDetails),
-        },
-      },
-      ...mappedPriceItems.map(({ item, variantId: lensVariantId }) => ({
-        id: lensVariantId,
-        quantity: 1,
-        properties: {
-          _lens_group: groupId,
-          "Lens price component": item.label,
-        },
-      })),
-    ];
-
-    try {
-      const shopifyRoot =
-        (
-          window as Window & {
-            Shopify?: {
-              routes?: {
-                root?: string;
-              };
+    const shopifyRoot =
+      (
+        window as Window & {
+          Shopify?: {
+            routes?: {
+              root?: string;
             };
-          }
-        ).Shopify?.routes?.root ?? "/";
+          };
+        }
+      ).Shopify?.routes?.root ?? "/";
 
-      const root = shopifyRoot.endsWith("/")
-        ? shopifyRoot
-        : `${shopifyRoot}/`;
+    const root = shopifyRoot.endsWith("/")
+      ? shopifyRoot
+      : `${shopifyRoot}/`;
+    const fields: Record<string, string> = {
+      "items[0][id]": variantId,
+      "items[0][quantity]": "1",
+      "items[0][properties][_lens_group]": groupId,
+      "items[0][properties][_lens_parent]": "true",
+      "items[0][properties][_lens_details]": JSON.stringify(lensDetails),
+      return_to: `${root}cart`,
+    };
 
-      const response = await fetch(`${root}cart/add.js`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ items }),
-      });
+    Object.entries(lensDetails).forEach(([key, value]) => {
+      fields[`items[0][properties][${key}]`] = value;
+    });
 
-      const responseData = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(
-          responseData?.description ||
-            responseData?.message ||
-            "Unable to add the configured frame to your cart.",
-        );
-      }
+    mappedPriceItems.forEach(({ item, variantId: lensVariantId }, index) => {
+      const itemIndex = index + 1;
+      fields[`items[${itemIndex}][id]`] = lensVariantId;
+      fields[`items[${itemIndex}][quantity]`] = "1";
+      fields[`items[${itemIndex}][properties][_lens_group]`] = groupId;
+      fields[`items[${itemIndex}][properties][Lens price component]`] =
+        item.label;
+    });
 
-      window.location.assign(`${root}cart`);
-    } catch (error) {
-      console.error("Error adding configured frame to cart:", error);
-      setCartError(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong while adding your frame to the cart.",
-      );
-      setIsAddingToCart(false);
-    }
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = `${root}cart/add`;
+    form.acceptCharset = "UTF-8";
+
+    Object.entries(fields).forEach(([name, value]) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
   };
 
   return (
