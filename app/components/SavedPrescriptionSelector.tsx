@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { PrescriptionData } from "./PrescriptionForm";
+import { getGuestPrescriptionToken } from "../utils/guest-prescription-token";
 
 type SavedPrescription = {
     id: string;
@@ -81,6 +82,7 @@ export default function SavedPrescriptionSelector({
         const formData = new FormData();
         formData.append("intent", "get-file");
         formData.append("fileId", fileId);
+        formData.append("guestToken", getGuestPrescriptionToken());
 
         const response = await fetch(endpoint, {
             method: "POST",
@@ -166,9 +168,13 @@ export default function SavedPrescriptionSelector({
                     window.location.origin,
                 );
 
+                const formData = new FormData();
+                formData.append("intent", "list");
+                formData.append("guestToken", getGuestPrescriptionToken());
                 const response = await fetch(endpoint, {
                     signal: controller.signal,
-                    credentials: "same-origin",
+                    method: "POST",
+                    body: formData,
                 });
 
                 if (!response.ok) {
@@ -218,7 +224,7 @@ export default function SavedPrescriptionSelector({
                 </h1>
 
                 <p className="mt-2 text-sm text-slate-500">
-                    Select a prescription saved to your customer account.
+                    Select a prescription saved for this customer or in this browser.
                 </p>
 
                 {loading && (

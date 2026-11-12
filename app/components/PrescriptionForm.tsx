@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getGuestPrescriptionToken } from "../utils/guest-prescription-token";
 
 type PrescriptionFormProps = {
     lensIndexName: string;
@@ -78,6 +79,7 @@ export default function PrescriptionForm(
             const endpoint = new URL(`${proxyPathPrefix}/lens-saved-prescriptions`, window.location.origin,);
 
             const formData = new FormData();
+            formData.append("guestToken", getGuestPrescriptionToken());
 
             formData.append("name", "My Prescription")
 

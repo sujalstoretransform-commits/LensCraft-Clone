@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { getGuestPrescriptionToken } from "../utils/guest-prescription-token";
 
 type PrescriptionUploadProps = {
     proxyPathPrefix: string | null;
@@ -59,6 +60,7 @@ export default function PrescriptionUpload({
             const endpoint = new URL(`${proxyPathPrefix}/lens-saved-prescriptions`, window.location.origin)
 
             const formData = new FormData();
+            formData.append("guestToken", getGuestPrescriptionToken());
 
             formData.append("name", "Uploaded Prescription");
             formData.append("prescriptionImage", file);

@@ -1,13 +1,13 @@
 import { authenticate } from "../shopify.server";
-import type { LoaderFunctionArgs, ActionFunctionArgs } from "react-router";
+import type { ActionFunctionArgs } from "react-router";
 import {
   createSavedPrescription,
   getSavedPrescriptionFile,
   getSavedPrescriptions,
+  cleanupExpiredGuestPrescriptions,
 } from "../services/saved-prescription.server";
 import { del, get, put } from "@vercel/blob";
 
-const GUEST_COOKIE = "lenscraft_guest_prescription";
 const GUEST_EXPIRY_DAYS = 30;
 const GUEST_EXPIRY_SECONDS = GUEST_EXPIRY_DAYS * 24 * 60 * 60;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -19,38 +19,8 @@ const ALLOWED_TYPES = [
   "application/pdf",
 ];
 
-function getCookie(request: Request, name: string): string | null {
-  const cookieHeader = request.headers.get("Cookie");
-
-  if (!cookieHeader) return null;
-
-  const cookie = cookieHeader
-    .split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${name}=`));
-
-  if (!cookie) return null;
-
-  try {
-    return decodeURIComponent(cookie.substring(name.length + 1));
-  } catch {
-    return null;
-  }
-}
-
-function createGuestToken() {
-  return crypto.randomUUID();
-}
-
-function createGuestCookie(token: string) {
-  return [
-    `${GUEST_COOKIE}=${encodeURIComponent(token)}`,
-    "HttpOnly",
-    "Secure",
-    "SameSite=Lax",
-    "Path=/",
-    `Max-Age=${GUEST_EXPIRY_SECONDS}`,
-  ].join("; ");
+function isValidGuestToken(token: string | null): token is string {
+  return Boolean(token && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token));
 }
 
 function guestExpiryDate() {
@@ -72,71 +42,14 @@ function getOptionalNumber(formData: FormData, key: string) {
   return Number.isFinite(number) ? number : NaN;
 }
 
-function getPrescriptionOwner(customerId: string | null, guestToken: string) {
+function getPrescriptionOwner(customerId: string | null, guestToken: string | null) {
   return customerId
     ? { customerId }
-    : { guestToken };
+    : { guestToken: guestToken! };
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  const { session } = await authenticate.public.appProxy(request);
-
-  if (!session) {
-    return Response.json(
-      { error: "Invalid Shopify session" },
-      { status: 401 },
-    );
-  }
-
-  const url = new URL(request.url);
-  const customerId = url.searchParams.get("logged_in_customer_id");
-
-  let guestToken = getCookie(request, GUEST_COOKIE);
-  let shouldSetCookie = false;
-
-  if (!customerId && !guestToken) {
-    guestToken = createGuestToken();
-    shouldSetCookie = true;
-  }
-
-  const owner = getPrescriptionOwner(customerId, guestToken!);
-
-  const headers = new Headers();
-
-  if (shouldSetCookie) {
-    headers.append("Set-Cookie", createGuestCookie(guestToken!));
-  }
-
-  try {
-    const savedPrescriptions = await getSavedPrescriptions({
-      shop: session.shop,
-      ...owner,
-    });
-
-    return Response.json(
-      {
-        savedPrescriptions: savedPrescriptions.map(
-          ({ fileKey, ...prescription }) => ({
-            ...prescription,
-            hasFile: Boolean(fileKey),
-            rightSph: prescription.rightSph?.toString() ?? null,
-            rightCyl: prescription.rightCyl?.toString() ?? null,
-            leftSph: prescription.leftSph?.toString() ?? null,
-            leftCyl: prescription.leftCyl?.toString() ?? null,
-            pd: prescription.pd?.toString() ?? null,
-          }),
-        ),
-      },
-      { headers },
-    );
-  } catch (error) {
-    console.error("Load saved prescriptions failed:", error);
-
-    return Response.json(
-      { error: "Saved prescriptions are temporarily unavailable." },
-      { status: 503, headers },
-    );
-  }
+export async function loader() {
+  return Response.json({ error: "POST required" }, { status: 405, headers: { Allow: "POST" } });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -152,20 +65,37 @@ export async function action({ request }: ActionFunctionArgs) {
       );
     }
 
+    await cleanupExpiredGuestPrescriptions(session.shop);
+
     const url = new URL(request.url);
     const customerId = url.searchParams.get("logged_in_customer_id");
 
-    let guestToken = getCookie(request, GUEST_COOKIE);
-    let shouldSetCookie = false;
+    const formData = await request.formData();
+    const intent = String(formData.get("intent") ?? "");
+    const rawGuestToken = String(formData.get("guestToken") ?? "");
+    const guestToken = isValidGuestToken(rawGuestToken) ? rawGuestToken : null;
 
     if (!customerId && !guestToken) {
-      guestToken = createGuestToken();
-      shouldSetCookie = true;
+      return Response.json({ error: "Guest session is missing. Refresh and try again." }, { status: 400 });
     }
 
-    const formData = await request.formData();
-
-    const intent = String(formData.get("intent") ?? "");
+    if (intent === "list") {
+      const savedPrescriptions = await getSavedPrescriptions({
+        shop: session.shop,
+        ...getPrescriptionOwner(customerId, guestToken),
+      });
+      return Response.json({
+        savedPrescriptions: savedPrescriptions.map(({ fileKey, ...prescription }) => ({
+          ...prescription,
+          hasFile: Boolean(fileKey),
+          rightSph: prescription.rightSph?.toString() ?? null,
+          rightCyl: prescription.rightCyl?.toString() ?? null,
+          leftSph: prescription.leftSph?.toString() ?? null,
+          leftCyl: prescription.leftCyl?.toString() ?? null,
+          pd: prescription.pd?.toString() ?? null,
+        })),
+      });
+    }
 
     if (intent === "get-file") {
       const fileId = String(formData.get("fileId") ?? "").trim();
@@ -209,10 +139,6 @@ export async function action({ request }: ActionFunctionArgs) {
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
       });
-
-      if (shouldSetCookie && guestToken) {
-        headers.append("Set-Cookie", createGuestCookie(guestToken));
-      }
 
       return new Response(blob.stream, { headers });
     }
@@ -326,15 +252,9 @@ export async function action({ request }: ActionFunctionArgs) {
       fileSize: uploadedFile?.size ?? null,
     });
 
-    const headers = new Headers();
-
-    if (shouldSetCookie && guestToken) {
-      headers.append("Set-Cookie", createGuestCookie(guestToken));
-    }
-
     return Response.json(
       { success: true, prescription },
-      { status: 201, headers },
+      { status: 201 },
     );
   } catch (error) {
     // Remove the uploaded file if database saving fails.

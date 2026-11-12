@@ -268,3 +268,15 @@ model SavedPrescription {
   @@index([shop, guestToken])
   @@index([guestExpiresAt])
 }
+
+model PrivacyDataRequest {
+  id           String    @id @default(cuid())
+  shop         String
+  requestId    String
+  customerId   String
+  requestedAt  DateTime  @default(now())
+  fulfilledAt  DateTime?
+
+  @@unique([shop, requestId])
+  @@index([shop, fulfilledAt, requestedAt])
+}

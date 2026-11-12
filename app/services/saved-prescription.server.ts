@@ -1,4 +1,16 @@
 import prisma from "../db.server";
+import { del } from "@vercel/blob";
+
+export async function cleanupExpiredGuestPrescriptions(shop: string) {
+  const where = { shop, guestExpiresAt: { lte: new Date() } };
+  const expired = await prisma.savedPrescription.findMany({
+    where,
+    select: { fileKey: true },
+  });
+  const fileKeys = expired.flatMap(({ fileKey }) => fileKey ? [fileKey] : []);
+  if (fileKeys.length) await del(fileKeys);
+  await prisma.savedPrescription.deleteMany({ where });
+}
 
 const prescriptionSelect = {
   id: true,
