@@ -47,7 +47,7 @@ export async function createDefaultLensProduct(admin: AdminApiContext) {
   const optionValuesFor = (item: typeof catalogItems[number]) => [
     { optionName: "Lens Type", name: item.category === "type" ? item.optionValue : fallbackTypeValue },
     { optionName: "Lens Index", name: item.category === "index" ? item.optionValue : "Not applicable" },
-    { optionName: "Lens Technology / Lens Option", name: item.category === "combined" ? item.optionValue : "Not applicable" },
+    { optionName: "Lens Technology and Lens Option", name: item.category === "combined" ? item.optionValue : "Not applicable" },
   ];
 
   const handle = "lens-types-catalog";
@@ -84,7 +84,7 @@ export async function createDefaultLensProduct(admin: AdminApiContext) {
         productOptions: [
           { name: "Lens Type", values: typeValues.map((name) => ({ name })) },
           { name: "Lens Index", values: [{ name: "Not applicable" }, ...indexValues.map((name) => ({ name }))] },
-          { name: "Lens Technology / Lens Option", values: [{ name: "Not applicable" }, ...combinedValues.map((name) => ({ name }))] },
+          { name: "Lens Technology and Lens Option", values: [{ name: "Not applicable" }, ...combinedValues.map((name) => ({ name }))] },
         ],
       } } });
     const createData = await create.json() as any;
@@ -98,7 +98,7 @@ export async function createDefaultLensProduct(admin: AdminApiContext) {
 
   const optionSpecs = [
     { name: "Lens Index", values: [{ name: "Not applicable" }, ...indexValues.map((name) => ({ name }))] },
-    { name: "Lens Technology / Lens Option", values: [{ name: "Not applicable" }, ...combinedValues.map((name) => ({ name }))] },
+    { name: "Lens Technology and Lens Option", values: [{ name: "Not applicable" }, ...combinedValues.map((name) => ({ name }))] },
   ];
   const missingOptions = optionSpecs.filter((option) => !product.options?.some((existing: { name: string }) => existing.name === option.name));
   if (missingOptions.length) {

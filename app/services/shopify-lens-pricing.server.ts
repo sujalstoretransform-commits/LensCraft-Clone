@@ -141,8 +141,8 @@ export async function loadShopLensPriceComponents(
   const optionNameByCode = new Map<string, string>();
   for (const item of catalog.lensTypes) optionNameByCode.set(item.code, "Lens Type");
   for (const item of catalog.lensIndices) optionNameByCode.set(item.code, "Lens Index");
-  for (const item of catalog.lensTechnologies) optionNameByCode.set(item.code, "Lens Technology / Lens Option");
-  for (const item of catalog.lensOptions) optionNameByCode.set(item.code, "Lens Technology / Lens Option");
+  for (const item of catalog.lensTechnologies) optionNameByCode.set(item.code, "Lens Technology and Lens Option");
+  for (const item of catalog.lensOptions) optionNameByCode.set(item.code, "Lens Technology and Lens Option");
   if (labelsByCode.size === 0) {
     throw new ShopLensPricingError("No active lens catalog codes are configured.");
   }
