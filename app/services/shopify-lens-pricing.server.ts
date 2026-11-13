@@ -1,7 +1,7 @@
 import { parseMajorToMinorUnits } from "app/utils/currency";
 import type { loadLensCatalog } from "./lens-catalog.server";
 
-const PRODUCT_HANDLE = "lens-upgrade";
+const PRODUCT_HANDLE = "lens-upgrade-catalog";
 const VARIANT_PAGE_SIZE = 100;
 const MAX_VARIANT_PAGES = 25;
 
@@ -22,6 +22,7 @@ type ShopifyVariant = {
   id: string;
   sku: string | null;
   title?: string | null;
+  selectedOptions?: { name: string; value: string }[];
   media?: { nodes?: { image?: { url?: string | null } | null }[] } | null;
   price?: string;
   contextualPricing?: {
@@ -169,6 +170,7 @@ export async function loadShopLensPriceComponents(
                   id
                   sku
                   title
+                  selectedOptions { name value }
                   media(first: 1) { nodes { ... on MediaImage { image { url } } } }
                   contextualPricing(context: { country: $country }) {
                     price { amount currencyCode }
@@ -189,6 +191,7 @@ export async function loadShopLensPriceComponents(
                   id
                   sku
                   title
+                  selectedOptions { name value }
                   media(first: 1) { nodes { ... on MediaImage { image { url } } } }
                   price
                 }
@@ -287,7 +290,8 @@ export async function loadShopLensPriceComponents(
     priceByCode[code] = {
       variantId: getVariantId(variant.id),
       amountMinor: pricedVariants[0].amountMinor,
-      name: variant.title && variant.title !== "Default Title" ? variant.title : label,
+      name: variant.selectedOptions?.find((option) => option.value !== "Not applicable")?.value
+        ?? (variant.title && variant.title !== "Default Title" ? variant.title : label),
       image: variant.media?.nodes?.[0]?.image?.url ?? productImage,
       description: productDescription,
     };

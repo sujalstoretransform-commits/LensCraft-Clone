@@ -8,7 +8,7 @@ import {
 import { PrismaSessionStorage } from "@shopify/shopify-app-session-storage-prisma";
 import prisma from "./db.server";
 
-const defaultLensProductTag = "lenscraft_default_lens_catalog";
+const defaultLensProductTag = "lenscraft_default_lens_catalog_v2";
 
 async function createDefaultLensProduct(admin: AdminApiContext) {
   const [lensTypes, lensIndices, lensTechnologies, lensOptions] = await Promise.all([
@@ -34,10 +34,10 @@ async function createDefaultLensProduct(admin: AdminApiContext) {
   if (lookupData.data?.products?.nodes?.length) return;
 
   const catalogItems = [
-    ...lensTypes.map(({ code, name }) => ({ code, name })),
-    ...lensIndices.map(({ code, displayName }) => ({ code, name: displayName })),
-    ...lensTechnologies.map(({ code, name }) => ({ code, name })),
-    ...lensOptions.map(({ code, name }) => ({ code, name })),
+    ...lensTypes.map(({ code, name }) => ({ code, name, optionName: "Lens Type" })),
+    ...lensIndices.map(({ code, displayName }) => ({ code, name: displayName, optionName: "Lens Index" })),
+    ...lensTechnologies.map(({ code, name }) => ({ code, name, optionName: "Lens Technology" })),
+    ...lensOptions.map(({ code, name }) => ({ code, name, optionName: "Lens Option" })),
   ];
   const duplicateCodes = catalogItems
     .map(({ code }) => code)
@@ -61,12 +61,15 @@ async function createDefaultLensProduct(admin: AdminApiContext) {
     {
       variables: {
         product: {
-          title: "Lens Upgrade",
-          handle: "lens-upgrade",
+          title: "Lens Upgrade Catalog",
+          handle: "lens-upgrade-catalog",
           status: "DRAFT",
           tags: [defaultLensProductTag],
           productOptions: [
-            { name: "Catalog Item", values: catalogItems.map(({ name }) => ({ name })) },
+            { name: "Lens Type", values: [{ name: "Not applicable" }, ...lensTypes.map(({ name }) => ({ name }))] },
+            { name: "Lens Index", values: [{ name: "Not applicable" }, ...lensIndices.map(({ displayName }) => ({ name: displayName }))] },
+            { name: "Lens Technology", values: [{ name: "Not applicable" }, ...lensTechnologies.map(({ name }) => ({ name }))] },
+            { name: "Lens Option", values: [{ name: "Not applicable" }, ...lensOptions.map(({ name }) => ({ name }))] },
           ],
         },
       },
@@ -78,31 +81,36 @@ async function createDefaultLensProduct(admin: AdminApiContext) {
     throw new Error(JSON.stringify(errors ?? "Product creation returned no product"));
   }
 
-  const product = data.data.productCreate.product;
-  const productId = product.id as string;
-  const firstVariantId = product.variants?.nodes?.[0]?.id as string | undefined;
+  const productId = data.data.productCreate.product.id as string;
+  const firstVariantId = data.data.productCreate.product.variants?.nodes?.[0]?.id as string | undefined;
   if (!firstVariantId) throw new Error("Shopify created the lens product without its first variant.");
-
-  const firstSkuResult = await admin.graphql(`#graphql
-    mutation SetFirstLensVariantSku($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+  const optionValuesFor = (item: typeof catalogItems[number]) => [
+    { optionName: "Lens Type", name: item.optionName === "Lens Type" ? item.name : "Not applicable" },
+    { optionName: "Lens Index", name: item.optionName === "Lens Index" ? item.name : "Not applicable" },
+    { optionName: "Lens Technology", name: item.optionName === "Lens Technology" ? item.name : "Not applicable" },
+    { optionName: "Lens Option", name: item.optionName === "Lens Option" ? item.name : "Not applicable" },
+  ];
+  const firstItem = catalogItems[0];
+  const firstVariantResult = await admin.graphql(`#graphql
+    mutation SetFirstLensVariant($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
       productVariantsBulkUpdate(productId: $productId, variants: $variants) {
         userErrors { field message }
       }
     }`, {
     variables: {
       productId,
-      variants: [{ id: firstVariantId, sku: catalogItems[0].code }],
+      variants: [{ id: firstVariantId, sku: firstItem.code, optionValues: optionValuesFor(firstItem) }],
     },
   });
-  const firstSkuData = await firstSkuResult.json() as any;
-  const firstSkuErrors = firstSkuData.data?.productVariantsBulkUpdate?.userErrors;
-  if (!firstSkuResult.ok || firstSkuErrors?.length) {
-    throw new Error(JSON.stringify(firstSkuErrors ?? "Could not set the first catalog SKU"));
+  const firstVariantData = await firstVariantResult.json() as any;
+  const firstVariantErrors = firstVariantData.data?.productVariantsBulkUpdate?.userErrors;
+  if (!firstVariantResult.ok || firstVariantErrors?.length) {
+    throw new Error(JSON.stringify(firstVariantErrors ?? "Could not set the first catalog variant"));
   }
 
-  const variantInputs = catalogItems.slice(1).map(({ code, name }) => ({
-    sku: code,
-    optionValues: [{ optionName: "Catalog Item", name }],
+  const variantInputs = catalogItems.slice(1).map((item) => ({
+    sku: item.code,
+    optionValues: optionValuesFor(item),
   }));
 
   for (let offset = 0; offset < variantInputs.length; offset += 250) {
