@@ -1,7 +1,12 @@
 import { parseMajorToMinorUnits } from "app/utils/currency";
 import type { loadLensCatalog } from "./lens-catalog.server";
 
-const PRODUCT_HANDLE = "lens-upgrade-catalog";
+const PRODUCT_HANDLES = [
+  "lens-types-catalog",
+  "lens-indices-catalog",
+  "lens-technologies-catalog",
+  "lens-options-catalog",
+];
 const VARIANT_PAGE_SIZE = 100;
 const MAX_VARIANT_PAGES = 25;
 
@@ -28,6 +33,8 @@ type ShopifyVariant = {
   contextualPricing?: {
     price?: { amount: string; currencyCode: string } | null;
   } | null;
+  productDescription?: string | null;
+  productImage?: string | null;
 };
 
 type ProductVariantPage = {
@@ -140,13 +147,11 @@ export async function loadShopLensPriceComponents(
     throw new ShopLensPricingError("No active lens catalog codes are configured.");
   }
   const variants: ShopifyVariant[] = [];
-  let cursor: string | null = null;
-  let productGid: string | null = null;
-  let productDescription: string | null = null;
-  let productImage: string | null = null;
-  let pageCount = 0;
-
-  do {
+  for (const handle of PRODUCT_HANDLES) {
+    let cursor: string | null = null;
+    let productGid: string | null = null;
+    let pageCount = 0;
+    do {
     pageCount += 1;
     if (pageCount > MAX_VARIANT_PAGES) {
       throw new ShopLensPricingError(
@@ -201,7 +206,7 @@ export async function loadShopLensPriceComponents(
           }`;
 
     const variables: Record<string, unknown> = {
-      handle: PRODUCT_HANDLE,
+      handle,
       cursor,
     };
     if (countryCode) variables.country = countryCode;
@@ -210,18 +215,20 @@ export async function loadShopLensPriceComponents(
     const product = data.productByIdentifier;
     if (!product) {
       throw new ShopLensPricingError(
-        "The lens-upgrade product is missing from this Shopify store.",
+        `The lens catalog product '${handle}' is missing from this Shopify store.`,
       );
     }
     if (productGid && productGid !== product.id) {
       throw new ShopLensPricingError(
-        "The lens-upgrade product changed while its variants were being read.",
+        `The lens catalog product '${handle}' changed while its variants were being read.`,
       );
     }
     productGid = product.id;
-    productDescription = product.descriptionHtml ?? null;
-    productImage = product.featuredMedia?.image?.url ?? null;
-    variants.push(...product.variants.nodes);
+    variants.push(...product.variants.nodes.map((variant) => ({
+      ...variant,
+      productDescription: product.descriptionHtml ?? null,
+      productImage: product.featuredMedia?.image?.url ?? null,
+    })));
 
     if (product.variants.pageInfo.hasNextPage) {
       const nextCursor = product.variants.pageInfo.endCursor;
@@ -234,12 +241,10 @@ export async function loadShopLensPriceComponents(
     } else {
       cursor = null;
     }
-  } while (cursor !== null);
-
-  if (!productGid) {
-    throw new ShopLensPricingError(
-      "The lens-upgrade product is missing from this Shopify store.",
-    );
+    } while (cursor !== null);
+    if (!productGid) {
+      throw new ShopLensPricingError(`The lens catalog product '${handle}' is missing from this Shopify store.`);
+    }
   }
 
   const priceByCode: Record<string, VariantPrice> = {};
@@ -292,8 +297,8 @@ export async function loadShopLensPriceComponents(
       amountMinor: pricedVariants[0].amountMinor,
       name: variant.selectedOptions?.find((option) => option.value !== "Not applicable")?.value
         ?? (variant.title && variant.title !== "Default Title" ? variant.title : label),
-      image: variant.media?.nodes?.[0]?.image?.url ?? productImage,
-      description: productDescription,
+      image: variant.media?.nodes?.[0]?.image?.url ?? variant.productImage,
+      description: variant.productDescription,
     };
   }
 

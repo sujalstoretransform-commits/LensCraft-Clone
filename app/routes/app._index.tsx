@@ -1,11 +1,18 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Form, redirect, useLoaderData } from "react-router";
-import { authenticate } from "../shopify.server";
+import { authenticate, createDefaultLensProduct } from "../shopify.server";
 import db from "../db.server";
 import { cleanupExpiredGuestPrescriptions } from "../services/saved-prescription.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
+  let lensProductSetupFailed = false;
+  try {
+    await createDefaultLensProduct(admin);
+  } catch (error) {
+    console.error("Default lens product setup failed from the app home:", error);
+    lensProductSetupFailed = true;
+  }
   await cleanupExpiredGuestPrescriptions(session.shop);
   const selectedCustomerId = new URL(request.url).searchParams.get("customerId");
   const savedPrescriptions = await db.savedPrescription.findMany({
@@ -26,6 +33,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
   return {
     shop: session.shop,
+    lensProductSetupFailed,
     selectedCustomerId,
     privacyRequests,
     savedPrescriptions: savedPrescriptions.map((prescription) => ({
@@ -52,12 +60,17 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function AppHome() {
-  const { shop, savedPrescriptions, privacyRequests, selectedCustomerId } = useLoaderData<typeof loader>();
+  const { shop, savedPrescriptions, privacyRequests, selectedCustomerId, lensProductSetupFailed } = useLoaderData<typeof loader>();
   const editorUrl = `https://${shop}/admin/themes/current/editor?context=apps`;
 
   return (
     <main className="mx-auto max-w-4xl p-8 text-slate-900">
       <h1 className="text-3xl font-semibold">Set up LensCraft Studio</h1>
+      {lensProductSetupFailed && (
+        <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          Lens catalog setup failed. Check the app server logs for the Shopify error, then reload this page to retry.
+        </p>
+      )}
       <p className="mt-3 text-slate-600">
         Add the LensCraft configurator to your storefront, then connect your lens-upgrade variants.
       </p>
@@ -77,7 +90,7 @@ export default function AppHome() {
       <section className="mt-5 rounded-xl border border-slate-200 p-6">
         <h2 className="text-xl font-semibold">2. Configure lens prices</h2>
         <p className="mt-2 text-slate-700">
-          Create variants in your Lens upgrade product and set each SKU to the exact catalog code for its lens component. The configurator reads variant prices from Shopify.
+          Open the draft lens catalog products created by the app. Lens types, indices, technologies, and options each have their own product and variant option. Each variant SKU is its catalog code. Set variant prices and images in Shopify; the configurator reads them by SKU.
         </p>
         <p className="mt-3 text-sm text-slate-500">
           Missing or duplicate SKU codes prevent the matching option from showing a price.
