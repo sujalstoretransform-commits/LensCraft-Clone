@@ -90,7 +90,7 @@ export default function AppHome() {
       <section className="mt-5 rounded-xl border border-slate-200 p-6">
         <h2 className="text-xl font-semibold">2. Configure lens prices</h2>
         <p className="mt-2 text-slate-700">
-          Open the draft Lens Catalog product. Lens Type and Lens Index have their own options; Lens Technology and Lens Option share the third option because Shopify supports at most three product options. Each variant SKU is its catalog code. Set variant prices and images in Shopify; the configurator reads them by SKU.
+          Open the Lens Catalog product. Each variant represents one catalog item, and its SKU matches that item’s catalog code. Set the variant price and image in Shopify; the configurator reads them by SKU. Publish the product to the Online Store sales channel so its variants can be added to cart.
         </p>
         <p className="mt-3 text-sm text-slate-500">
           Missing or duplicate SKU codes prevent the matching option from showing a price.
