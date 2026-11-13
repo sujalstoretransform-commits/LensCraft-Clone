@@ -295,10 +295,15 @@ export async function loadShopLensPriceComponents(
     const selectedName = variant.selectedOptions?.find(
       (option) => option.name === optionNameByCode.get(code),
     )?.value;
+    let displayName = selectedName?.replace(/^(Technology|Lens option):\s*/i, "");
+    const duplicateNameSuffix = ` (${code})`;
+    if (displayName?.endsWith(duplicateNameSuffix)) {
+      displayName = displayName.slice(0, -duplicateNameSuffix.length);
+    }
     priceByCode[code] = {
       variantId: getVariantId(variant.id),
       amountMinor: pricedVariants[0].amountMinor,
-      name: selectedName?.replace(/^(Technology|Lens option):\s*/i, "")
+      name: displayName
         ?? (variant.title && variant.title !== "Default Title" ? variant.title : label),
       image: variant.media?.nodes?.[0]?.image?.url ?? variant.productImage,
       description: variant.productDescription,
