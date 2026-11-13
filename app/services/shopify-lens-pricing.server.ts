@@ -139,10 +139,10 @@ export async function loadShopLensPriceComponents(
 ): Promise<PriceMappingResult> {
   const labelsByCode = getCatalogCodes(catalog);
   const optionNameByCode = new Map<string, string>();
-  for (const item of catalog.lensTypes) optionNameByCode.set(item.code, "Lens Type");
-  for (const item of catalog.lensIndices) optionNameByCode.set(item.code, "Lens Index");
-  for (const item of catalog.lensTechnologies) optionNameByCode.set(item.code, "Lens Technology and Lens Option");
-  for (const item of catalog.lensOptions) optionNameByCode.set(item.code, "Lens Technology and Lens Option");
+  for (const item of catalog.lensTypes) optionNameByCode.set(item.code, "Lens Catalog Item");
+  for (const item of catalog.lensIndices) optionNameByCode.set(item.code, "Lens Catalog Item");
+  for (const item of catalog.lensTechnologies) optionNameByCode.set(item.code, "Lens Catalog Item");
+  for (const item of catalog.lensOptions) optionNameByCode.set(item.code, "Lens Catalog Item");
   if (labelsByCode.size === 0) {
     throw new ShopLensPricingError("No active lens catalog codes are configured.");
   }
@@ -295,7 +295,7 @@ export async function loadShopLensPriceComponents(
     const selectedName = variant.selectedOptions?.find(
       (option) => option.name === optionNameByCode.get(code),
     )?.value;
-    let displayName = selectedName?.replace(/^(Technology|Lens option):\s*/i, "");
+    let displayName = selectedName?.replace(/^(Lens type|Lens index|Technology|Lens option):\s*/i, "");
     const duplicateNameSuffix = ` (${code})`;
     if (displayName?.endsWith(duplicateNameSuffix)) {
       displayName = displayName.slice(0, -duplicateNameSuffix.length);

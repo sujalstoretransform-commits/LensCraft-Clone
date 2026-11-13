@@ -30,60 +30,20 @@ export async function createDefaultLensProduct(admin: AdminApiContext) {
     prisma.lensOption.findMany({ where: { active: true }, orderBy: [{ category: "asc" }, { code: "asc" }], select: { code: true, name: true } }),
   ]);
 
-  const uniqueNames = <T extends { code: string; name: string }>(items: T[]) => {
-    const counts = new Map<string, number>();
-    for (const item of items) counts.set(item.name, (counts.get(item.name) ?? 0) + 1);
-    return items.map((item) => ({
-      ...item,
-      optionValue: counts.get(item.name)! > 1 ? `${item.name} (${item.code})` : item.name,
-    }));
-  };
   const catalogItems = [
-    ...uniqueNames(lensTypes.map(({ code, name }) => ({ code, name }))).map((item) => ({ ...item, category: "type" })),
-    ...uniqueNames(lensIndices.map(({ code, displayName }) => ({ code, name: displayName }))).map((item) => ({ ...item, category: "index" })),
-    ...lensTechnologies.map(({ code, name }) => ({ code, name, category: "combined", optionValue: `Technology: ${name}` })),
-    ...lensOptions.map(({ code, name }) => ({ code, name, category: "combined", optionValue: `Lens option: ${name}` })),
+    ...lensTypes.map(({ code, name }) => ({ code, name, category: "type", optionValue: `Lens type: ${name} (${code})` })),
+    ...lensIndices.map(({ code, displayName }) => ({ code, name: displayName, category: "index", optionValue: `Lens index: ${displayName} (${code})` })),
+    ...lensTechnologies.map(({ code, name }) => ({ code, name, category: "technology", optionValue: `Technology: ${name} (${code})` })),
+    ...lensOptions.map(({ code, name }) => ({ code, name, category: "option", optionValue: `Lens option: ${name} (${code})` })),
   ];
-  const combinedValueCounts = new Map<string, number>();
-  for (const item of catalogItems.filter(({ category }) => category === "combined")) {
-    combinedValueCounts.set(item.optionValue, (combinedValueCounts.get(item.optionValue) ?? 0) + 1);
-  }
-  for (const item of catalogItems.filter(({ category }) => category === "combined")) {
-    if (combinedValueCounts.get(item.optionValue)! > 1) item.optionValue = `${item.optionValue} (${item.code})`;
-  }
   const allCodes = catalogItems.map(({ code }) => code);
   const duplicateCodes = allCodes.filter((code, index) => allCodes.indexOf(code) !== index);
   if (duplicateCodes.length) throw new Error(`Catalog codes must be unique Shopify SKUs: ${[...new Set(duplicateCodes)].join(", ")}`);
   if (catalogItems.length > 2048) throw new Error("Shopify supports at most 2,048 variants on this catalog product.");
-  const typeValues = catalogItems.filter(({ category }) => category === "type").map(({ optionValue }) => optionValue);
-  const indexValues = catalogItems.filter(({ category }) => category === "index").map(({ optionValue }) => optionValue);
-  const combinedValues = catalogItems.filter(({ category }) => category === "combined").map(({ optionValue }) => optionValue);
-  if (!typeValues.length || !indexValues.length || !combinedValues.length) {
-    throw new Error("Lens catalog needs at least one active value for type, index, technology, and option.");
-  }
-
-  const combinations = typeValues.flatMap((type) => indexValues.flatMap((index) => combinedValues.map((combined) => [type, index, combined])));
-  if (combinations.length < catalogItems.length) {
-    throw new Error("The active catalog values do not provide enough unique Shopify variant combinations for all catalog SKUs.");
-  }
-  const usedCombinations = new Set<string>();
-  const optionValuesByCode = new Map<string, { optionName: string; name: string }[]>();
-  for (const item of catalogItems) {
-    const targetIndex = item.category === "type" ? 0 : item.category === "index" ? 1 : 2;
-    const combination = combinations.find((values) =>
-      values[targetIndex] === item.optionValue && !usedCombinations.has(JSON.stringify(values)),
-    );
-    if (!combination) {
-      throw new Error(`Could not assign a unique Shopify variant combination to catalog SKU ${item.code}.`);
-    }
-    usedCombinations.add(JSON.stringify(combination));
-    optionValuesByCode.set(item.code, [
-      { optionName: "Lens Type", name: combination[0] },
-      { optionName: "Lens Index", name: combination[1] },
-      { optionName: "Lens Technology and Lens Option", name: combination[2] },
-    ]);
-  }
-  const optionValuesFor = (item: typeof catalogItems[number]) => optionValuesByCode.get(item.code)!;
+  if (!catalogItems.length) throw new Error("Lens catalog has no active items to create variants from.");
+  const optionName = "Lens Catalog Item";
+  const optionValues = catalogItems.map(({ optionValue }) => ({ name: optionValue }));
+  const optionValuesFor = (item: typeof catalogItems[number]) => [{ optionName, name: item.optionValue }];
 
   const handle = "lens-types-catalog";
   const lookup = await admin.graphql(`#graphql
@@ -96,7 +56,7 @@ export async function createDefaultLensProduct(admin: AdminApiContext) {
         variants(first: 250) { nodes { id sku selectedOptions { name value } } }
       }
       products(first: 1, query: $query) {
-        nodes { id handle title options { name } tags variants(first: 250) { nodes { id sku } } }
+        nodes { id handle title options { id name optionValues { id name } } tags variants(first: 250) { nodes { id sku } } }
       }
     }`, { variables: { handle, query: `handle:${handle}` } });
   const lookupData = await lookup.json() as any;
@@ -119,11 +79,7 @@ export async function createDefaultLensProduct(admin: AdminApiContext) {
         handle,
         status: "DRAFT",
         tags: [defaultLensProductTag],
-        productOptions: [
-          { name: "Lens Type", values: typeValues.map((name) => ({ name })) },
-          { name: "Lens Index", values: indexValues.map((name) => ({ name })) },
-          { name: "Lens Technology and Lens Option", values: combinedValues.map((name) => ({ name })) },
-        ],
+        productOptions: [{ name: optionName, values: optionValues }],
       } } });
     const createData = await create.json() as any;
     const createErrors = graphqlErrors(createData);
@@ -134,46 +90,83 @@ export async function createDefaultLensProduct(admin: AdminApiContext) {
     product = createData.data.productCreate.product;
   }
 
-  const optionSpecs = [
-    { name: "Lens Index", values: indexValues.map((name) => ({ name })) },
-    { name: "Lens Technology and Lens Option", values: combinedValues.map((name) => ({ name })) },
-  ];
-  const desiredValuesByOption = new Map([
-    ["Lens Type", new Set(typeValues)],
-    ["Lens Index", new Set(indexValues)],
-    ["Lens Technology and Lens Option", new Set(combinedValues)],
-  ]);
-  const missingOptions = optionSpecs.filter((option) => !product.options?.some((existing: { name: string }) => existing.name === option.name));
-  if (missingOptions.length) {
-    const addOptions = await admin.graphql(`#graphql
-      mutation AddLensCatalogOptions($productId: ID!, $options: [OptionCreateInput!]!) {
-        productOptionsCreate(productId: $productId, options: $options, variantStrategy: LEAVE_AS_IS) {
-          product { id options { id name optionValues { id name } } variants(first: 250) { nodes { id sku selectedOptions { name value } } } }
-          userErrors { field message }
+  const allExistingVariants: { id: string; sku?: string | null; selectedOptions?: { name: string; value: string }[] }[] = [];
+  let variantCursor: string | null = null;
+  do {
+    const variantPage = await admin.graphql(`#graphql
+      query ReadLensCatalogVariants($productId: ID!, $cursor: String) {
+        product(id: $productId) {
+          variants(first: 250, after: $cursor) {
+            nodes { id sku selectedOptions { name value } }
+            pageInfo { hasNextPage endCursor }
+          }
         }
-      }`, { variables: { productId: product.id, options: missingOptions } });
-    const optionsData = await addOptions.json() as any;
-    const optionsErrors = graphqlErrors(optionsData);
-    const userErrors = optionsData.data?.productOptionsCreate?.userErrors;
-    if (!addOptions.ok || optionsErrors.length || userErrors?.length) {
-      throw new Error(`Could not add lens catalog options: ${JSON.stringify(optionsErrors.length ? optionsErrors : userErrors)}`);
+      }`, { variables: { productId: product.id, cursor: variantCursor } });
+    const variantPageData = await variantPage.json() as any;
+    const variantPageErrors = graphqlErrors(variantPageData);
+    const variantConnection = variantPageData.data?.product?.variants;
+    if (!variantPage.ok || variantPageErrors.length || !variantConnection) {
+      throw new Error(`Could not read existing lens catalog variants: ${JSON.stringify(variantPageErrors)}`);
     }
-    product = optionsData.data?.productOptionsCreate?.product ?? product;
+    allExistingVariants.push(...variantConnection.nodes);
+    variantCursor = variantConnection.pageInfo.hasNextPage ? variantConnection.pageInfo.endCursor : null;
+    if (variantConnection.pageInfo.hasNextPage && !variantCursor) {
+      throw new Error("Shopify returned an invalid lens catalog variant cursor.");
+    }
+  } while (variantCursor);
+  product.variants = { nodes: allExistingVariants };
+
+  let primaryOption = product.options?.find((option: { name: string }) => option.name === optionName)
+    ?? product.options?.[0];
+  if (!primaryOption) throw new Error("Lens catalog product has no option to migrate.");
+  const itemByCode = new Map(catalogItems.map((item) => [item.code, item]));
+  const legacyValueByVariantId = new Map<string, string>();
+  for (const variant of allExistingVariants) {
+    if (variant.sku && itemByCode.has(variant.sku)) continue;
+    const idSuffix = variant.id.split("/").pop();
+    const fallback = `Unmapped catalog variant (${variant.sku || idSuffix})`;
+    legacyValueByVariantId.set(variant.id, fallback);
   }
+  const currentValueNames = new Set(primaryOption.optionValues?.map((value: { name: string }) => value.name) ?? []);
+  const migrationOptionValues = [
+    ...optionValues,
+    ...[...new Set(legacyValueByVariantId.values())].map((name) => ({ name })),
+  ];
+  const valuesToAdd = migrationOptionValues.filter(({ name }) => !currentValueNames.has(name));
+  const optionMigration = await admin.graphql(`#graphql
+    mutation PrepareFlatLensCatalogOption($productId: ID!, $option: OptionUpdateInput!, $values: [OptionValueCreateInput!]) {
+      productOptionUpdate(productId: $productId, option: $option, optionValuesToAdd: $values, variantStrategy: LEAVE_AS_IS) {
+        product { id options { id name optionValues { id name } } }
+        userErrors { field message }
+      }
+    }`, { variables: { productId: product.id, option: { id: primaryOption.id, name: optionName, position: 1 }, values: valuesToAdd } });
+  const migrationData = await optionMigration.json() as any;
+  const migrationErrors = graphqlErrors(migrationData);
+  const migrationUserErrors = migrationData.data?.productOptionUpdate?.userErrors;
+  if (!optionMigration.ok || migrationErrors.length || migrationUserErrors?.length) {
+    throw new Error(`Could not prepare flat lens catalog option: ${JSON.stringify(migrationErrors.length ? migrationErrors : migrationUserErrors)}`);
+  }
+  product.options = migrationData.data?.productOptionUpdate?.product?.options ?? product.options;
+  primaryOption = product.options?.find((option: { name: string }) => option.name === optionName);
+  if (!primaryOption) throw new Error("Shopify did not return the updated lens catalog option.");
 
   const existingVariants = product.variants?.nodes ?? [];
   const existingSkuList = existingVariants.map((variant: { sku?: string | null }) => variant.sku).filter(Boolean) as string[];
   const duplicateExistingSkus = existingSkuList.filter((sku, index) => existingSkuList.indexOf(sku) !== index);
   if (duplicateExistingSkus.length) throw new Error(`Duplicate Shopify catalog SKUs: ${[...new Set(duplicateExistingSkus)].join(", ")}`);
   const existingSkus = new Set(existingSkuList);
-  const itemByCode = new Map(catalogItems.map((item) => [item.code, item]));
   const firstUnassignedItem = catalogItems.find(({ code }) => !existingSkus.has(code));
   const updates = existingVariants.flatMap((variant: { id: string; sku?: string | null; selectedOptions?: { name: string; value: string }[] }, index: number) => {
     let item = variant.sku ? itemByCode.get(variant.sku) : undefined;
     if (!item && !variant.sku && index === 0) item = firstUnassignedItem;
-    if (!item) return [];
-    const needsPlaceholderRepair = !variant.sku || variant.selectedOptions?.some((option) => option.value === "Not applicable");
-    if (!needsPlaceholderRepair) return [];
+    if (!item) {
+      const name = legacyValueByVariantId.get(variant.id);
+      return name ? [{ id: variant.id, optionValues: [{ optionName, name }] }] : [];
+    }
+    const alreadyFlat = variant.selectedOptions?.length === 1
+      && variant.selectedOptions[0].name === optionName
+      && variant.selectedOptions[0].value === item.optionValue;
+    if (alreadyFlat && variant.sku) return [];
     existingSkus.add(item.code);
     return [{ id: variant.id, inventoryItem: { sku: item.code }, optionValues: optionValuesFor(item) }];
   });
@@ -186,6 +179,25 @@ export async function createDefaultLensProduct(admin: AdminApiContext) {
     const updateErrors = graphqlErrors(updateData);
     const userErrors = updateData.data?.productVariantsBulkUpdate?.userErrors;
     if (!update.ok || updateErrors.length || userErrors?.length) throw new Error(`Could not sync existing lens variants: ${JSON.stringify(updateErrors.length ? updateErrors : userErrors)}`);
+  }
+
+  const obsoleteOptionIds = (product.options ?? [])
+    .filter((option: { id: string; name: string }) => option.id !== primaryOption.id)
+    .map((option: { id: string }) => option.id);
+  if (obsoleteOptionIds.length) {
+    const removeOptions = await admin.graphql(`#graphql
+      mutation RemoveLensCatalogGroupingOptions($productId: ID!, $options: [ID!]!) {
+        productOptionsDelete(productId: $productId, options: $options, strategy: NON_DESTRUCTIVE) {
+          deletedOptionsIds
+          userErrors { field message }
+        }
+      }`, { variables: { productId: product.id, options: obsoleteOptionIds } });
+    const removeData = await removeOptions.json() as any;
+    const removeErrors = graphqlErrors(removeData);
+    const removeUserErrors = removeData.data?.productOptionsDelete?.userErrors;
+    if (!removeOptions.ok || removeErrors.length || removeUserErrors?.length) {
+      throw new Error(`Could not remove lens catalog grouping options: ${JSON.stringify(removeErrors.length ? removeErrors : removeUserErrors)}`);
+    }
   }
 
   const missingItems = catalogItems.filter(({ code }) => !existingSkus.has(code));
@@ -201,23 +213,6 @@ export async function createDefaultLensProduct(admin: AdminApiContext) {
     if (!bulk.ok || bulkErrors.length || userErrors?.length) throw new Error(`Could not create lens catalog variants: ${JSON.stringify(bulkErrors.length ? bulkErrors : userErrors)}`);
   }
 
-  for (const option of product.options ?? []) {
-    const desiredValues = desiredValuesByOption.get(option.name) ?? new Set<string>();
-    const placeholderIds = option.optionValues
-      ?.filter((value: { name: string }) => value.name === "Not applicable" && !desiredValues.has(value.name))
-      .map((value: { id: string }) => value.id) ?? [];
-    if (!placeholderIds.length) continue;
-    const cleanup = await admin.graphql(`#graphql
-      mutation RemoveLensCatalogPlaceholderValues($productId: ID!, $option: OptionUpdateInput!, $valueIds: [ID!]!) {
-        productOptionUpdate(productId: $productId, option: $option, optionValuesToDelete: $valueIds, variantStrategy: LEAVE_AS_IS) {
-          userErrors { field message }
-        }
-      }`, { variables: { productId: product.id, option: { id: option.id }, valueIds: placeholderIds } });
-    const cleanupData = await cleanup.json() as any;
-    const cleanupErrors = graphqlErrors(cleanupData);
-    const userErrors = cleanupData.data?.productOptionUpdate?.userErrors;
-    if (!cleanup.ok || cleanupErrors.length || userErrors?.length) throw new Error(`Could not remove placeholder values from ${option.name}: ${JSON.stringify(cleanupErrors.length ? cleanupErrors : userErrors)}`);
-  }
 }
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
