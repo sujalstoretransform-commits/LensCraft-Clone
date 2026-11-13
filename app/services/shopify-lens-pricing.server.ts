@@ -1,12 +1,7 @@
 import { parseMajorToMinorUnits } from "app/utils/currency";
 import type { loadLensCatalog } from "./lens-catalog.server";
 
-const PRODUCT_HANDLES = [
-  "lens-types-catalog",
-  "lens-indices-catalog",
-  "lens-technologies-catalog",
-  "lens-options-catalog",
-];
+const PRODUCT_HANDLES = ["lens-types-catalog"];
 const VARIANT_PAGE_SIZE = 100;
 const MAX_VARIANT_PAGES = 25;
 
@@ -143,6 +138,11 @@ export async function loadShopLensPriceComponents(
   countryCode?: string,
 ): Promise<PriceMappingResult> {
   const labelsByCode = getCatalogCodes(catalog);
+  const optionNameByCode = new Map<string, string>();
+  for (const item of catalog.lensTypes) optionNameByCode.set(item.code, "Lens Type");
+  for (const item of catalog.lensIndices) optionNameByCode.set(item.code, "Lens Index");
+  for (const item of catalog.lensTechnologies) optionNameByCode.set(item.code, "Lens Technology / Lens Option");
+  for (const item of catalog.lensOptions) optionNameByCode.set(item.code, "Lens Technology / Lens Option");
   if (labelsByCode.size === 0) {
     throw new ShopLensPricingError("No active lens catalog codes are configured.");
   }
@@ -292,10 +292,13 @@ export async function loadShopLensPriceComponents(
 
     const variant = pricedVariants[0].variant;
     resolvedCurrencyCode ??= pricedVariants[0].currencyCode;
+    const selectedName = variant.selectedOptions?.find(
+      (option) => option.name === optionNameByCode.get(code),
+    )?.value;
     priceByCode[code] = {
       variantId: getVariantId(variant.id),
       amountMinor: pricedVariants[0].amountMinor,
-      name: variant.selectedOptions?.find((option) => option.value !== "Not applicable")?.value
+      name: selectedName?.replace(/^(Technology|Lens option):\s*/i, "")
         ?? (variant.title && variant.title !== "Default Title" ? variant.title : label),
       image: variant.media?.nodes?.[0]?.image?.url ?? variant.productImage,
       description: variant.productDescription,
