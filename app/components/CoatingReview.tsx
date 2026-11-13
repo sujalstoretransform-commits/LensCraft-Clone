@@ -8,6 +8,7 @@ type LensOption = {
     code: string;
     name: string;
     description: string | null;
+    image?: string | null;
     category: "add_on";
     prices: {
         code: string;
@@ -175,7 +176,8 @@ export default function CoatingReview({
 
                                         <span className="min-w-0 flex-1">
                                             <span className="flex flex-wrap items-center justify-between gap-2">
-                                                <span className="font-medium text-slate-800">
+                                                <span className="flex items-center gap-3 font-medium text-slate-800">
+                                                    {option.image && <img src={option.image} alt="" className="size-12 rounded-md object-cover" />}
                                                     {option.name}
                                                 </span>
 

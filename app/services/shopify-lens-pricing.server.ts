@@ -21,6 +21,8 @@ type AdminGraphqlClient = {
 type ShopifyVariant = {
   id: string;
   sku: string | null;
+  title?: string | null;
+  media?: { nodes?: { image?: { url?: string | null } | null }[] } | null;
   price?: string;
   contextualPricing?: {
     price?: { amount: string; currencyCode: string } | null;
@@ -30,6 +32,8 @@ type ShopifyVariant = {
 type ProductVariantPage = {
   productByIdentifier?: {
     id: string;
+    descriptionHtml?: string | null;
+    featuredMedia?: { image?: { url?: string | null } | null } | null;
     variants: {
       nodes: ShopifyVariant[];
       pageInfo: {
@@ -45,6 +49,9 @@ export class ShopLensPricingError extends Error {}
 type VariantPrice = {
   variantId: string;
   amountMinor: number;
+  name?: string;
+  image?: string | null;
+  description?: string | null;
 };
 
 type PriceMappingResult = {
@@ -134,6 +141,8 @@ export async function loadShopLensPriceComponents(
   const variants: ShopifyVariant[] = [];
   let cursor: string | null = null;
   let productGid: string | null = null;
+  let productDescription: string | null = null;
+  let productImage: string | null = null;
   let pageCount = 0;
 
   do {
@@ -153,10 +162,14 @@ export async function loadShopLensPriceComponents(
           ) {
             productByIdentifier(identifier: { handle: $handle }) {
               id
+              descriptionHtml
+              featuredMedia { ... on MediaImage { image { url } } }
               variants(first: ${VARIANT_PAGE_SIZE}, after: $cursor) {
                 nodes {
                   id
                   sku
+                  title
+                  media(first: 1) { nodes { ... on MediaImage { image { url } } } }
                   contextualPricing(context: { country: $country }) {
                     price { amount currencyCode }
                   }
@@ -169,10 +182,14 @@ export async function loadShopLensPriceComponents(
           query LensUpgradeProductVariants($handle: String!, $cursor: String) {
             productByIdentifier(identifier: { handle: $handle }) {
               id
+              descriptionHtml
+              featuredMedia { ... on MediaImage { image { url } } }
               variants(first: ${VARIANT_PAGE_SIZE}, after: $cursor) {
                 nodes {
                   id
                   sku
+                  title
+                  media(first: 1) { nodes { ... on MediaImage { image { url } } } }
                   price
                 }
                 pageInfo { hasNextPage endCursor }
@@ -199,6 +216,8 @@ export async function loadShopLensPriceComponents(
       );
     }
     productGid = product.id;
+    productDescription = product.descriptionHtml ?? null;
+    productImage = product.featuredMedia?.image?.url ?? null;
     variants.push(...product.variants.nodes);
 
     if (product.variants.pageInfo.hasNextPage) {
@@ -268,6 +287,9 @@ export async function loadShopLensPriceComponents(
     priceByCode[code] = {
       variantId: getVariantId(variant.id),
       amountMinor: pricedVariants[0].amountMinor,
+      name: variant.title && variant.title !== "Default Title" ? variant.title : label,
+      image: variant.media?.nodes?.[0]?.image?.url ?? productImage,
+      description: productDescription,
     };
   }
 
@@ -289,6 +311,14 @@ export function applyShopLensPricesToCatalog(
       ? [{ code, kind, amountMinor: shopPrice.amountMinor, currencyCode }]
       : [];
   };
+  const getShopDetails = (code: string) => {
+    const item = priceByCode[code];
+    return item ? {
+      ...(item.name ? { name: item.name } : {}),
+      ...(item.image ? { image: item.image } : {}),
+      ...(item.description ? { description: item.description } : {}),
+    } : {};
+  };
 
   return {
     ...catalog,
@@ -296,6 +326,7 @@ export function applyShopLensPricesToCatalog(
     pricingAvailable: catalog.pricingAvailable,
     lensTypes: catalog.lensTypes.map((lensType) => ({
       ...lensType,
+      ...getShopDetails(lensType.code),
       prices: [
         ...getPrice(lensType.code, "base"),
         ...catalog.lensIndices.flatMap((lensIndex) =>
@@ -308,6 +339,13 @@ export function applyShopLensPricesToCatalog(
     })),
     lensIndices: catalog.lensIndices.map((lensIndex) => ({
       ...lensIndex,
+      ...(priceByCode[lensIndex.code]
+        ? {
+            displayName: priceByCode[lensIndex.code].name ?? lensIndex.displayName,
+            image: priceByCode[lensIndex.code].image ?? null,
+            description: priceByCode[lensIndex.code].description ?? null,
+          }
+        : {}),
       prices: catalog.lensTypes.flatMap((lensType) =>
         getPrice(lensIndex.code, "upgrade").map((price) => ({
           ...price,
@@ -317,6 +355,7 @@ export function applyShopLensPricesToCatalog(
     })),
     lensOptions: catalog.lensOptions.map((option) => ({
       ...option,
+      ...getShopDetails(option.code),
       prices: getPrice(option.code, option.category === "add_on" ? "add_on" : "upgrade"),
       lensTechnologyOptions: option.lensTechnologyOptions.map((mapping) => ({
         ...mapping,
@@ -328,6 +367,7 @@ export function applyShopLensPricesToCatalog(
     })),
     lensTechnologies: catalog.lensTechnologies.map((technology) => ({
       ...technology,
+      ...getShopDetails(technology.code),
       lensPrices: getPrice(technology.code, "upgrade"),
     })),
   };

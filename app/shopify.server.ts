@@ -11,10 +11,11 @@ import prisma from "./db.server";
 const defaultLensProductTag = "lenscraft_default_lens_catalog";
 
 async function createDefaultLensProduct(admin: AdminApiContext) {
-  const [lensTypes, lensIndices, lensTechnologies] = await Promise.all([
-    prisma.lensType.findMany({ where: { active: true }, orderBy: { code: "asc" }, select: { name: true } }),
-    prisma.lensIndex.findMany({ where: { active: true }, orderBy: { refractiveIndex: "asc" }, select: { displayName: true } }),
-    prisma.lensTechnology.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" }, select: { name: true } }),
+  const [lensTypes, lensIndices, lensTechnologies, lensOptions] = await Promise.all([
+    prisma.lensType.findMany({ where: { active: true }, orderBy: { code: "asc" }, select: { code: true, name: true } }),
+    prisma.lensIndex.findMany({ where: { active: true }, orderBy: { refractiveIndex: "asc" }, select: { code: true, displayName: true } }),
+    prisma.lensTechnology.findMany({ where: { active: true }, orderBy: { sortOrder: "asc" }, select: { code: true, name: true } }),
+    prisma.lensOption.findMany({ where: { active: true }, orderBy: [{ category: "asc" }, { code: "asc" }], select: { code: true, name: true } }),
   ]);
 
   if (!lensTypes.length || !lensIndices.length || !lensTechnologies.length) {
@@ -32,11 +33,27 @@ async function createDefaultLensProduct(admin: AdminApiContext) {
   const lookupData = await lookup.json() as any;
   if (lookupData.data?.products?.nodes?.length) return;
 
+  const catalogItems = [
+    ...lensTypes.map(({ code, name }) => ({ code, name })),
+    ...lensIndices.map(({ code, displayName }) => ({ code, name: displayName })),
+    ...lensTechnologies.map(({ code, name }) => ({ code, name })),
+    ...lensOptions.map(({ code, name }) => ({ code, name })),
+  ];
+  const duplicateCodes = catalogItems
+    .map(({ code }) => code)
+    .filter((code, index, codes) => codes.indexOf(code) !== index);
+  if (duplicateCodes.length) {
+    throw new Error(`Catalog codes must be unique Shopify SKUs: ${[...new Set(duplicateCodes)].join(", ")}`);
+  }
+  if (catalogItems.length === 0) {
+    throw new Error("Default lens catalog has no Shopify-priced catalog codes.");
+  }
+
   const result = await admin.graphql(
     `#graphql
       mutation CreateDefaultLensProduct($product: ProductCreateInput!) {
         productCreate(product: $product) {
-          product { id options { name optionValues { name } } }
+          product { id variants(first: 1) { nodes { id } } }
           userErrors { field message }
         }
       }
@@ -44,13 +61,12 @@ async function createDefaultLensProduct(admin: AdminApiContext) {
     {
       variables: {
         product: {
-          title: "LensCraft Lens Options",
+          title: "Lens Upgrade",
+          handle: "lens-upgrade",
           status: "DRAFT",
           tags: [defaultLensProductTag],
           productOptions: [
-            { name: "Lens Type", values: lensTypes.map(({ name }) => ({ name })) },
-            { name: "Lens Index", values: lensIndices.map(({ displayName }) => ({ name: displayName })) },
-            { name: "Lens Technology", values: lensTechnologies.map(({ name }) => ({ name })) },
+            { name: "Catalog Item", values: catalogItems.map(({ name }) => ({ name })) },
           ],
         },
       },
@@ -62,18 +78,32 @@ async function createDefaultLensProduct(admin: AdminApiContext) {
     throw new Error(JSON.stringify(errors ?? "Product creation returned no product"));
   }
 
-  const productId = data.data.productCreate.product.id as string;
-  const variantInputs = lensTypes.flatMap(({ name: lensType }) =>
-    lensIndices.flatMap(({ displayName: lensIndex }) =>
-      lensTechnologies.map(({ name: lensTechnology }) => ({
-        optionValues: [
-          { optionName: "Lens Type", name: lensType },
-          { optionName: "Lens Index", name: lensIndex },
-          { optionName: "Lens Technology", name: lensTechnology },
-        ],
-      })),
-    ),
-  ).slice(1); // productCreate already creates the first combination.
+  const product = data.data.productCreate.product;
+  const productId = product.id as string;
+  const firstVariantId = product.variants?.nodes?.[0]?.id as string | undefined;
+  if (!firstVariantId) throw new Error("Shopify created the lens product without its first variant.");
+
+  const firstSkuResult = await admin.graphql(`#graphql
+    mutation SetFirstLensVariantSku($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+      productVariantsBulkUpdate(productId: $productId, variants: $variants) {
+        userErrors { field message }
+      }
+    }`, {
+    variables: {
+      productId,
+      variants: [{ id: firstVariantId, sku: catalogItems[0].code }],
+    },
+  });
+  const firstSkuData = await firstSkuResult.json() as any;
+  const firstSkuErrors = firstSkuData.data?.productVariantsBulkUpdate?.userErrors;
+  if (!firstSkuResult.ok || firstSkuErrors?.length) {
+    throw new Error(JSON.stringify(firstSkuErrors ?? "Could not set the first catalog SKU"));
+  }
+
+  const variantInputs = catalogItems.slice(1).map(({ code, name }) => ({
+    sku: code,
+    optionValues: [{ optionName: "Catalog Item", name }],
+  }));
 
   for (let offset = 0; offset < variantInputs.length; offset += 250) {
     const variantsResult = await admin.graphql(

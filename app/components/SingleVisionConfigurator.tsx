@@ -5,6 +5,8 @@ type SingleVisionConfiguratorProps = {
     lensIndices: {
         code: string;
         displayName: string;
+        image?: string | null;
+        description?: string | null;
         refractiveIndex: number | string;
         supplierMappings: {
             lensType: {
@@ -27,6 +29,8 @@ type SingleVisionConfiguratorProps = {
     onContinue?: (selectedIndex: {
         code: string;
         displayName: string;
+        image?: string | null;
+        description?: string | null;
         refractiveIndex: number;
     }) => void;
     selectedIndexCode: string;
@@ -116,13 +120,14 @@ export default function SingleVisionConfigurator({
                                         <h2 className="mt-2 font-semibold text-slate-900">
                                             {index.displayName}
                                         </h2>
+                                        {index.image && <img src={index.image} alt="" className="mt-3 size-16 rounded-lg object-cover" />}
 
                                         <p className="mt-2 text-sm text-slate-600">
-                                            {Number(index.refractiveIndex) <= 1.5
+                                            {index.description || (Number(index.refractiveIndex) <= 1.5
                                                 ? "Standard lens index."
                                                 : Number(index.refractiveIndex) < 1.67
                                                     ? "Thinner lens option."
-                                                    : "Higher-index option for thinner lenses."}
+                                                    : "Higher-index option for thinner lenses.")}
                                         </p>
 
                                         {prices.map((price) => (
@@ -161,6 +166,8 @@ export default function SingleVisionConfigurator({
                         onContinue?.({
                             code: selectedIndex.code,
                             displayName: selectedIndex.displayName,
+                            image: selectedIndex.image,
+                            description: selectedIndex.description,
                             refractiveIndex: Number(selectedIndex.refractiveIndex)
                         })
                     }}

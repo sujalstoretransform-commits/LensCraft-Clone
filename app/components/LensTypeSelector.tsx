@@ -10,6 +10,7 @@ type LensType = {
     code: string;
     name: string;
     description: string | null;
+    image?: string | null;
     startingPrice: number | null;
 };
 
@@ -52,7 +53,7 @@ export default function LensTypeSelector({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {lensTypes.map((lens) => {
                     const isSelected = selectedLensTypeCode === lens.code;
-                    const image = lensImages[lens.code]
+                    const image = lens.image || lensImages[lens.code]
 
                     return (
                         <button
