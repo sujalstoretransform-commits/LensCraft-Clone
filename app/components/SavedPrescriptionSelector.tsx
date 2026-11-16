@@ -263,13 +263,12 @@ export default function SavedPrescriptionSelector({
                     {prescriptions.map((prescription) => (
                         <article
                             key={prescription.id}
-                            className={`w-full rounded-xl border p-5 transition-all duration-200 ${
-                                selectedPrescription?.id === prescription.id
+                            className={`w-full rounded-xl border p-5 transition-all duration-200 ${selectedPrescription?.id === prescription.id
                                     ? "border-blue-600 bg-blue-50"
                                     : "border-slate-200 bg-white"
-                            }`}
+                                }`}
                         >
-                            <label className="block cursor-pointer rounded-lg focus-within:ring-2 focus-within:ring-blue-500">
+                            <label className="block cursor-pointer">
                                 <input
                                     className="sr-only"
                                     type="radio"
@@ -279,72 +278,72 @@ export default function SavedPrescriptionSelector({
                                     aria-label={`Select prescription ${prescription.name}`}
                                 />
                                 <div>
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-base font-semibold text-slate-900">
-                                    {prescription.name}
-                                </h3>
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-base font-semibold text-slate-900">
+                                            {prescription.name}
+                                        </h3>
 
-                                <span className="text-sm font-medium text-blue-600">
-                                    {selectedPrescription?.id === prescription.id
-                                        ? "Selected"
-                                        : "Select →"}
-                                </span>
-                            </div>
+                                        <span className="text-sm font-medium text-blue-600">
+                                            {selectedPrescription?.id === prescription.id
+                                                ? "Selected"
+                                                : "Select →"}
+                                        </span>
+                                    </div>
 
-                            <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
-                                <div>
-                                    <p className="text-sm font-semibold text-slate-800">
-                                        Right eye (OD)
+                                    <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-800">
+                                                Right eye (OD)
+                                            </p>
+
+                                            <p className="mt-1.5 text-sm text-slate-500">
+                                                SPH:{" "}
+                                                <span className="font-medium text-slate-700">
+                                                    {prescription.rightSph ?? "—"}
+                                                </span>
+                                                {" · "}
+                                                CYL:{" "}
+                                                <span className="font-medium text-slate-700">
+                                                    {prescription.rightCyl ?? "—"}
+                                                </span>
+                                                {" · "}
+                                                Axis:{" "}
+                                                <span className="font-medium text-slate-700">
+                                                    {prescription.rightAxis ?? "—"}
+                                                </span>
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-800">
+                                                Left eye (OS)
+                                            </p>
+
+                                            <p className="mt-1.5 text-sm text-slate-500">
+                                                SPH:{" "}
+                                                <span className="font-medium text-slate-700">
+                                                    {prescription.leftSph ?? "—"}
+                                                </span>
+                                                {" · "}
+                                                CYL:{" "}
+                                                <span className="font-medium text-slate-700">
+                                                    {prescription.leftCyl ?? "—"}
+                                                </span>
+                                                {" · "}
+                                                Axis:{" "}
+                                                <span className="font-medium text-slate-700">
+                                                    {prescription.leftAxis ?? "—"}
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <p className="mt-4 text-sm text-slate-500">
+                                        PD:{" "}
+                                        <span className="font-semibold text-slate-800">
+                                            {prescription.pd ?? "—"} mm
+                                        </span>
                                     </p>
-
-                                    <p className="mt-1.5 text-sm text-slate-500">
-                                        SPH:{" "}
-                                        <span className="font-medium text-slate-700">
-                                            {prescription.rightSph ?? "—"}
-                                        </span>
-                                        {" · "}
-                                        CYL:{" "}
-                                        <span className="font-medium text-slate-700">
-                                            {prescription.rightCyl ?? "—"}
-                                        </span>
-                                        {" · "}
-                                        Axis:{" "}
-                                        <span className="font-medium text-slate-700">
-                                            {prescription.rightAxis ?? "—"}
-                                        </span>
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <p className="text-sm font-semibold text-slate-800">
-                                        Left eye (OS)
-                                    </p>
-
-                                    <p className="mt-1.5 text-sm text-slate-500">
-                                        SPH:{" "}
-                                        <span className="font-medium text-slate-700">
-                                            {prescription.leftSph ?? "—"}
-                                        </span>
-                                        {" · "}
-                                        CYL:{" "}
-                                        <span className="font-medium text-slate-700">
-                                            {prescription.leftCyl ?? "—"}
-                                        </span>
-                                        {" · "}
-                                        Axis:{" "}
-                                        <span className="font-medium text-slate-700">
-                                            {prescription.leftAxis ?? "—"}
-                                        </span>
-                                    </p>
-                                </div>
-                            </div>
-
-                            <p className="mt-4 text-sm text-slate-500">
-                                PD:{" "}
-                                <span className="font-semibold text-slate-800">
-                                    {prescription.pd ?? "—"} mm
-                                </span>
-                            </p>
                                 </div>
                             </label>
 

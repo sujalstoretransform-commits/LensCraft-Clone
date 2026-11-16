@@ -1,10 +1,10 @@
 import type { MetaFunction } from "react-router";
 
 export const meta: MetaFunction = () => [
-  { title: "Privacy Policy | Lens Option By Storetransform" },
+  { title: "Privacy Policy | LensCraft Studio" },
   {
     name: "description",
-    content: "How Lens Option By Storetransform collects, uses, stores, and deletes information.",
+    content: "How LensCraft Studio collects, uses, stores, and deletes information.",
   },
 ];
 
@@ -13,8 +13,8 @@ const sections = [
     title: "1. Who we are",
     content: (
       <p>
-        Lens Option By Storetransform is provided by its app developer. For privacy questions or requests,
-        contact the developer using the support contact on the Lens Option By Storetransform Shopify App Store
+        LensCraft Studio is provided by its app developer. For privacy questions or requests,
+        contact the developer using the support contact on the LensCraft Studio Shopify App Store
         listing. Buyers can also contact the Shopify store where they used the configurator.
       </p>
     ),
@@ -23,7 +23,7 @@ const sections = [
     title: "2. What this policy covers",
     content: (
       <p>
-        This policy explains what information Lens Option By Storetransform processes from Shopify merchants who
+        This policy explains what information LensCraft Studio processes from Shopify merchants who
         install the app and from buyers who use the lens configurator or save a prescription on a
         merchant’s store.
       </p>
@@ -122,7 +122,7 @@ const sections = [
       <p>
         Buyers can ask the store where they used the configurator to access or delete saved
         prescription information. Merchants can contact the app developer through the support
-        contact on the Shopify App Store listing. Lens Option By Storetransform processes Shopify customer data
+        contact on the Shopify App Store listing. LensCraft Studio processes Shopify customer data
         request, customer erasure, and shop erasure webhooks.
       </p>
     ),
@@ -139,7 +139,7 @@ const sections = [
     title: "10. Contact",
     content: (
       <p>
-        Contact the Lens Option By Storetransform developer using the support contact on the Shopify App Store
+        Contact the LensCraft Studio developer using the support contact on the Shopify App Store
         listing. Buyers can also contact the Shopify merchant whose store they used.
       </p>
     ),
@@ -151,14 +151,14 @@ export default function PrivacyPolicy() {
     <main className="min-h-screen bg-slate-50 px-4 py-12 text-slate-900 sm:px-6">
       <article className="mx-auto max-w-3xl rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-10">
         <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">
-          Lens Option By Storetransform
+          LensCraft Studio
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
           Privacy Policy
         </h1>
         <p className="mt-3 text-sm text-slate-500">Last updated: November 13, 2026</p>
         <p className="mt-6 leading-7 text-slate-700">
-          This policy describes the information Lens Option By Storetransform processes to provide its Shopify
+          This policy describes the information LensCraft Studio processes to provide its Shopify
           lens configuration and saved-prescription features.
         </p>
         <div className="mt-8 space-y-8">
