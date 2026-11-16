@@ -1,19 +1,57 @@
 import { useRef, useState } from "react";
 import { getGuestPrescriptionToken } from "../utils/guest-prescription-token";
+import type { PrescriptionData } from "./PrescriptionForm";
 
 type PrescriptionUploadProps = {
     proxyPathPrefix: string | null;
+    errors: string[];
+    onSelectionChange: () => void;
     onBack: () => void;
-    onContinue: (file: File, fileName: string) => void;
+    onContinue: (
+        file: File,
+        prescription: PrescriptionData,
+        fileName: string,
+    ) => void;
+    // Called when the server could not read all values from the file.
+    onNeedsReview: (
+        file: File,
+        prescription: PrescriptionData,
+        message: string,
+    ) => void;
+};
+
+type UploadResponse = {
+    success: boolean;
+    prescription: {
+        rightSph: string | null;
+        rightCyl: string | null;
+        rightAxis: number | null;
+        leftSph: string | null;
+        leftCyl: string | null;
+        leftAxis: number | null;
+        pd: string | null;
+    };
+    extractedPrescription: {
+        rightSph: string | null;
+        rightCyl: string | null;
+        rightAxis: string | null;
+        leftSph: string | null;
+        leftCyl: string | null;
+        leftAxis: string | null;
+        pd: string | null;
+    } | null;
+    ocrStatus: "completed" | "not_requested" | "no_text" | "failed";
 };
 
 export default function PrescriptionUpload({
     proxyPathPrefix,
+    errors,
+    onSelectionChange,
     onBack,
-    onContinue
-}: PrescriptionUploadProps
-) {
-    const fileInputRef = useRef<HTMLInputElement>(null)
+    onContinue,
+    onNeedsReview,
+}: PrescriptionUploadProps) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [file, setFile] = useState<File | null>(null);
     const [error, setError] = useState("");
@@ -29,18 +67,21 @@ export default function PrescriptionUpload({
     const handleFileChange = (selectedFile?: File) => {
         if (!selectedFile) return;
 
-        setError("")
+        setError("");
+        onSelectionChange();
 
         if (!allowedTypes.includes(selectedFile.type)) {
             setError("Please upload a JPG, PNG, WEBP or PDF file.");
             return;
         }
+
         if (selectedFile.size > 5 * 1024 * 1024) {
             setError("File size must be 5MB or smaller.");
             return;
         }
+
         setFile(selectedFile);
-    }
+    };
 
     const handleUpload = async () => {
         if (!file) {
@@ -48,69 +89,84 @@ export default function PrescriptionUpload({
             return;
         }
 
-        if (!proxyPathPrefix || !proxyPathPrefix.startsWith("/") || proxyPathPrefix.startsWith("//")) {
+        if (
+            !proxyPathPrefix ||
+            !proxyPathPrefix.startsWith("/") ||
+            proxyPathPrefix.startsWith("//")
+        ) {
             setError("Upload service is not configured.");
             return;
         }
 
-        setIsUploading(true)
-        setError("")
+        setIsUploading(true);
+        setError("");
 
         try {
-            const endpoint = new URL(`${proxyPathPrefix}/lens-saved-prescriptions`, window.location.origin)
+            const endpoint = new URL(
+                `${proxyPathPrefix}/lens-saved-prescriptions`,
+                window.location.origin,
+            );
 
             const formData = new FormData();
             formData.append("guestToken", getGuestPrescriptionToken());
-
             formData.append("name", "Uploaded Prescription");
             formData.append("prescriptionImage", file);
 
             const response = await fetch(endpoint, {
                 method: "POST",
-                headers: {
-                    Accept: "application/json"
-                },
-                body: formData
-            })
+                headers: { Accept: "application/json" },
+                body: formData,
+            });
 
-            const responseText = await response.text();
-            let result: unknown = null;
-            try {
-                result = JSON.parse(responseText);
-            } catch {
-                if (!response.ok) {
-                    throw new Error(
-                        `Upload failed (HTTP ${response.status} ${response.statusText}). The app proxy returned a non-JSON response.`,
-                    );
-                }
-            }
+            const responseJson = await response.json();
 
             if (!response.ok) {
-                const message =
-                    typeof result === "object" &&
-                    result !== null &&
-                    "error" in result &&
-                    typeof result.error === "string"
-                        ? result.error
-                        : `Unable to upload prescription (HTTP ${response.status}).`;
-                throw new Error(message);
+                const found = responseJson?.extractedPrescription;
+
+                if (response.status === 422 && found) {
+                    onNeedsReview(
+                        file,
+                        {
+                            rightSph: found.rightSph ?? "",
+                            rightCyl: found.rightCyl ?? "",
+                            rightAxis: found.rightAxis ?? "",
+                            leftSph: found.leftSph ?? "",
+                            leftCyl: found.leftCyl ?? "",
+                            leftAxis: found.leftAxis ?? "",
+                            pd: found.pd ?? "",
+                        },
+                        responseJson.error ??
+                            "We couldn't read all values from your file.",
+                    );
+                    return;
+                }
+
+                throw new Error(
+                    responseJson?.error ?? "Unable to upload prescription.",
+                );
             }
 
-            if (result === null) {
-                throw new Error("The upload endpoint returned an invalid response.");
-            }
+            const saved = (responseJson as UploadResponse).prescription;
 
-            onContinue(file, file.name)
+            const prescription: PrescriptionData = {
+                rightSph: saved.rightSph ?? "",
+                rightCyl: saved.rightCyl ?? "",
+                rightAxis: saved.rightAxis?.toString() ?? "",
+                leftSph: saved.leftSph ?? "",
+                leftCyl: saved.leftCyl ?? "",
+                leftAxis: saved.leftAxis?.toString() ?? "",
+                pd: saved.pd ?? "",
+            };
+
+            onContinue(file, prescription, file.name);
         } catch (err) {
             setError(
-                err instanceof Error
-                    ? err.message
-                    : "Unable to upload prescription.",
+                err instanceof Error ? err.message : "Unable to upload prescription.",
             );
         } finally {
             setIsUploading(false);
         }
-    }
+    };
 
     return (
         <section className="w-full bg-white px-5 py-8 md:px-12">
@@ -137,10 +193,10 @@ export default function PrescriptionUpload({
 
                 <button
                     type="button"
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={(event) => {
-                        event.preventDefault();
-                        handleFileChange(event.dataTransfer.files[0])
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                        e.preventDefault();
+                        handleFileChange(e.dataTransfer.files[0]);
                     }}
                     onClick={() => fileInputRef.current?.click()}
                     className="w-full cursor-pointer rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center transition hover:border-slate-500"
@@ -171,7 +227,10 @@ export default function PrescriptionUpload({
 
                         <button
                             type="button"
-                            onClick={() => setFile(null)}
+                            onClick={() => {
+                                setFile(null);
+                                onSelectionChange();
+                            }}
                             className="ml-4 text-sm font-medium text-red-600 hover:text-red-700"
                         >
                             Remove
@@ -179,11 +238,21 @@ export default function PrescriptionUpload({
                     </div>
                 )}
 
-
                 {error && (
                     <p role="alert" className="mt-4 text-sm text-red-600">
                         {error}
                     </p>
+                )}
+
+                {errors.length > 0 && (
+                    <ul
+                        role="alert"
+                        className="mt-4 space-y-1 text-sm font-medium text-red-600"
+                    >
+                        {errors.map((message) => (
+                            <li key={message}>{message}</li>
+                        ))}
+                    </ul>
                 )}
 
                 <div className="mt-8 flex items-center justify-between gap-4 border-t border-slate-100 pt-6">
@@ -197,14 +266,14 @@ export default function PrescriptionUpload({
 
                     <button
                         type="button"
-                        disabled={!file || isUploading}
                         onClick={handleUpload}
-                        className="rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700"
+                        disabled={isUploading || !file}
+                        className="rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        {isUploading ? "Uploading" : "Continue"}
+                        {isUploading ? "Uploading…" : "Continue"}
                     </button>
                 </div>
             </div>
-        </section >
-    )
+        </section>
+    );
 }

@@ -7,6 +7,10 @@ import {
   cleanupExpiredGuestPrescriptions,
 } from "../services/saved-prescription.server";
 import { del, get, put } from "@vercel/blob";
+import { validatePrescription } from "app/services/prescription";
+
+import { extractPrescription } from "app/services/prescription-ocr.server";
+import { error } from "console";
 
 const GUEST_EXPIRY_DAYS = 30;
 const GUEST_EXPIRY_SECONDS = GUEST_EXPIRY_DAYS * 24 * 60 * 60;
@@ -40,6 +44,13 @@ function getOptionalNumber(formData: FormData, key: string) {
   const number = Number(value);
 
   return Number.isFinite(number) ? number : NaN;
+}
+
+function parseOcrAxis(value: string | null): number | null {
+  if (!value) return null;
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function getPrescriptionOwner(customerId: string | null, guestToken: string | null) {
@@ -85,9 +96,9 @@ export async function action({ request }: ActionFunctionArgs) {
         ...getPrescriptionOwner(customerId, guestToken),
       });
       return Response.json({
-        savedPrescriptions: savedPrescriptions.map(({ fileKey, ...prescription }) => ({
+        savedPrescriptions: savedPrescriptions.map((prescription: any) => ({
           ...prescription,
-          hasFile: Boolean(fileKey),
+          hasFile: Boolean(prescription.fileKey),
           rightSph: prescription.rightSph?.toString() ?? null,
           rightCyl: prescription.rightCyl?.toString() ?? null,
           leftSph: prescription.leftSph?.toString() ?? null,
@@ -149,6 +160,8 @@ export async function action({ request }: ActionFunctionArgs) {
     const pd = String(formData.get("pd") ?? "").trim();
 
     const prescriptionImage = formData.get("prescriptionImage");
+    const hasFile =
+      prescriptionImage instanceof File && prescriptionImage.size > 0;
 
     let uploadedFile: {
       pathname: string;
@@ -157,16 +170,17 @@ export async function action({ request }: ActionFunctionArgs) {
       originalName: string;
     } | null = null;
 
-    // Validate the file before uploading.
-    if (prescriptionImage instanceof File && prescriptionImage.size > 0) {
-      if (!ALLOWED_TYPES.includes(prescriptionImage.type)) {
+    if (hasFile) {
+      const file = prescriptionImage as File;
+
+      if (!ALLOWED_TYPES.includes(file.type)) {
         return Response.json(
           { error: "Only JPG, PNG, WEBP, and PDF files are allowed" },
           { status: 400 },
         );
       }
 
-      if (prescriptionImage.size > MAX_FILE_SIZE) {
+      if (file.size > MAX_FILE_SIZE) {
         return Response.json(
           { error: "Prescription file must be 5MB or smaller" },
           { status: 400 },
@@ -174,7 +188,6 @@ export async function action({ request }: ActionFunctionArgs) {
       }
     }
 
-    // Validate required prescription information before uploading.
     if (!name || (!prescriptionImage && (!rightSph || !leftSph || !pd))) {
       return Response.json(
         {
@@ -186,7 +199,6 @@ export async function action({ request }: ActionFunctionArgs) {
       );
     }
 
-    // Validate optional numeric fields.
     const rightAxis = getOptionalNumber(formData, "rightAxis");
     const leftAxis = getOptionalNumber(formData, "leftAxis");
 
@@ -197,8 +209,32 @@ export async function action({ request }: ActionFunctionArgs) {
       );
     }
 
-    // Upload the prescription privately to Vercel Blob.
-    if (prescriptionImage instanceof File && prescriptionImage.size > 0) {
+    const extraction = hasFile
+      ? await extractPrescription(prescriptionImage as File)
+      : null;
+    const extracted = extraction?.prescription ?? null;
+
+    const finalRightSph = extracted?.rightSph ?? (rightSph || null);
+    const finalLeftSph = extracted?.leftSph ?? (leftSph || null);
+    const finalPd = extracted?.pd ?? (pd || null);
+
+    if (hasFile && (!finalRightSph || !finalLeftSph || !finalPd)) {
+      return Response.json(
+        {
+          error:
+            extraction?.status === "failed"
+              ? "We couldn't read your file. Please enter or check the values below."
+              : "We couldn't read all values from your file. Please check the values below.",
+          extractedPrescription: extracted,
+          ocrStatus: extraction?.status,
+        },
+        { status: 422 },
+      );
+    }
+
+    if (hasFile) {
+      const file = prescriptionImage as File;
+
       const extensionByType: Record<string, string> = {
         "image/jpeg": "jpg",
         "image/png": "png",
@@ -206,22 +242,48 @@ export async function action({ request }: ActionFunctionArgs) {
         "application/pdf": "pdf",
       };
 
-      const pathname = `prescriptions/${crypto.randomUUID()}.${extensionByType[prescriptionImage.type]}`;
+      const pathname = `prescriptions/${crypto.randomUUID()}.${extensionByType[file.type]}`;
 
-      const blob = await put(pathname, prescriptionImage, {
+      const blob = await put(pathname, file, {
         access: "private",
         addRandomSuffix: true,
-        contentType: prescriptionImage.type,
+        contentType: file.type,
       });
 
       uploadedPathname = blob.pathname;
 
       uploadedFile = {
         pathname: blob.pathname,
-        contentType: prescriptionImage.type,
-        size: prescriptionImage.size,
-        originalName: prescriptionImage.name,
+        contentType: file.type,
+        size: file.size,
+        originalName: file.name,
       };
+    }
+
+    if (extracted) {
+      const num = (v: string | null) => (v ? Number(v) : undefined);
+
+      const check = validatePrescription({
+        right: {
+          sph: num(extracted.rightSph),
+          cyl: num(extracted.rightCyl),
+          axis: num(extracted.rightAxis),
+        },
+        left: {
+          sph: num(extracted.leftSph),
+          cyl: num(extracted.leftCyl),
+          axis: num(extracted.leftAxis),
+        },
+        pd: { single: num(extracted.pd) },
+      })
+
+      if (!check.valid) {
+        if (uploadedPathname) {
+          await del(uploadedPathname).catch(() => { })
+        }
+        return Response.json({ error: check.errors.join(" ") }, { status: 400 })
+      }
+
     }
 
     const prescription = await createSavedPrescription({
@@ -235,13 +297,13 @@ export async function action({ request }: ActionFunctionArgs) {
         }),
 
       name,
-      rightSph: rightSph || null,
-      rightCyl: getOptionalString(formData, "rightCyl"),
-      rightAxis,
-      leftSph: leftSph || null,
-      leftCyl: getOptionalString(formData, "leftCyl"),
-      leftAxis,
-      pd: pd || null,
+      rightSph: finalRightSph,
+      rightCyl: extracted?.rightCyl ?? getOptionalString(formData, "rightCyl"),
+      rightAxis: parseOcrAxis(extracted?.rightAxis ?? null) ?? rightAxis,
+      leftSph: finalLeftSph,
+      leftCyl: extracted?.leftCyl ?? getOptionalString(formData, "leftCyl"),
+      leftAxis: parseOcrAxis(extracted?.leftAxis ?? null) ?? leftAxis,
+      pd: finalPd,
 
       prescribedAt: null,
       expiresAt: null,
@@ -253,11 +315,15 @@ export async function action({ request }: ActionFunctionArgs) {
     });
 
     return Response.json(
-      { success: true, prescription },
+      {
+        success: true,
+        prescription,
+        extractedPrescription: extracted,
+        ocrStatus: extraction?.status ?? "not_requested",
+      },
       { status: 201 },
     );
   } catch (error) {
-    // Remove the uploaded file if database saving fails.
     if (uploadedPathname) {
       try {
         await del(uploadedPathname);

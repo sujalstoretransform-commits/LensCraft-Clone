@@ -63,7 +63,6 @@ export default function SavedPrescriptionSelector({
         onSelectionChange();
     };
 
-    // Fetch prescription file through POST instead of exposing fileId in URL.
     const fetchPrescriptionFile = async (
         fileId: string,
     ): Promise<string> => {
@@ -99,7 +98,6 @@ export default function SavedPrescriptionSelector({
         return URL.createObjectURL(blob);
     };
 
-    // Continue with the selected prescription.
     const onHandleContinue = async () => {
         if (!selectedPrescription) {
             setValidationError("Please select a saved prescription.");

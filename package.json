@@ -46,6 +46,8 @@
     "react-dom": "^18.3.1",
     "react-router": "7.18.2",
     "tailwindcss": "^4.3.3",
+    "tesseract.js": "^7.0.0",
+    "unpdf": "^2.2.1",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^5.0.5"
   },

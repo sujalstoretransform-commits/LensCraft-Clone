@@ -140,14 +140,24 @@ export default function LensConfiguratorPage({
     setStep(4);
   };
 
-  const handleUploadContinue = (file: File, fileName: string) => {
+  const handleUploadContinue = (
+    file: File,
+    prescription: PrescriptionData,
+    fileName: string
+  ) => {
+    handlePrescriptionContinue(prescription, file, undefined, fileName)
+  };
+
+  const handleUploadNeedsReview = (
+    file: File,
+    values: PrescriptionData,
+    message: string,
+  ) => {
+    setPrescriptionValues(values);
     setPrescriptionImage(file);
-    setPrescriptionImageName(fileName);
-    setPrescriptionValues(undefined);
-    setSelectedLensIndex(null);
-    setPriceResult(null);
-    setPrescriptionErrors([]);
-    setStep(8);
+    setPrescriptionImageName(file.name);
+    setPrescriptionErrors([message]);
+    setPrescriptionMethod("manual");
   };
 
   const selectedLensTypeName =
@@ -213,15 +223,6 @@ export default function LensConfiguratorPage({
         variantTitle={product.variantTitle}
         image={product.image}
       />
-      {/* {!catalogAvailable && (
-        <p
-          role="status"
-          className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900 md:px-12"
-        >
-          Lens options are temporarily unavailable. You can still view the configurator; please try again later.
-        </p>
-      )} */}
-
       <section className="border-b border-slate-200 px-5 py-5 md:px-12">
         <div className="w-full">
           <p className="text-sm font-semibold text-slate-500">
@@ -325,11 +326,14 @@ export default function LensConfiguratorPage({
         {step === 3 && prescriptionMethod === 'upload' && (
           <PrescriptionUpload
             proxyPathPrefix={proxyPathPrefix}
+            errors={prescriptionErrors}
+            onSelectionChange={() => setPrescriptionErrors([])}
             onBack={() => {
               setPrescriptionErrors([])
               setStep(2)
             }}
             onContinue={handleUploadContinue}
+            onNeedsReview={handleUploadNeedsReview}
           />
         )}
 
