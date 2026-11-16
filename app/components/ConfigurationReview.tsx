@@ -60,6 +60,10 @@ export default function ConfigurationReview({
   const formatPrice = (amountMinor: number) =>
     formatMinorUnits(amountMinor, currencyCode);
 
+  const lensPriceBreakdown = priceItems
+    .map((item) => `${item.label}: ${formatPrice(item.amountMinor)}`)
+    .join("; ");
+
   const canContinueToCart = isUploadOnly || lensVariantsLoaded;
 
   const handleContinueToCart = () => {
@@ -71,9 +75,7 @@ export default function ConfigurationReview({
     }
 
     if (!variantId) {
-      setCartError(
-        "Frame variant is missing. Please go back and select your frame."
-      );
+      setCartError("Frame variant is missing. Please go back and select your frame.");
       return;
     }
 
@@ -83,9 +85,9 @@ export default function ConfigurationReview({
     let mappedPriceItems: ReturnType<typeof mapLensCartPriceItems>;
     try {
       mappedPriceItems = mapLensCartPriceItems(
-        isUploadOnly ? [] : priceItems,
+        priceItems,
         lensVariantIdByCode,
-        isUploadOnly ? 0 : lensTotalMinor
+        lensTotalMinor
       );
     } catch (error) {
       console.error("Lens cart pricing could not be verified:", error);
@@ -112,9 +114,7 @@ export default function ConfigurationReview({
         selectedCoatings.length > 0 ? selectedCoatings.join(", ") : "None",
       "Selected Technology": selectedTechnologyName || "N/A",
       "Selected Technology Color": selectedTechnologyColor,
-      "Lens price breakdown": priceItems
-        .map((item) => `${item.label}: ${formatPrice(item.amountMinor)}`)
-        .join("; "),
+      "Lens price breakdown": lensPriceBreakdown,
       "Prescription Image":
         prescriptionImageName ??
         prescriptionImage?.name ??
@@ -186,105 +186,73 @@ export default function ConfigurationReview({
           </h1>
         </div>
 
-        {!isUploadOnly && (
-          <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="flex min-h-[120px] items-start gap-4 rounded-lg border border-slate-200 bg-slate-50 p-5">
-              <div className="mt-1 shrink-0 text-xl text-blue-600">
-                ◉
-              </div>
-
-              <div className="min-w-0">
-                <p className="text-sm text-slate-500">Lens type</p>
-
-                <h2 className="mt-1 text-lg font-semibold text-slate-900">
-                  {lensTypeName}
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  Your selected lens design
-                </p>
-              </div>
-            </div>
-
-            <div className="flex min-h-[120px] items-start gap-4 rounded-lg border border-slate-200 bg-slate-50 p-5">
-              <div className="mt-1 shrink-0 text-xl text-blue-600">
-                ◎
-              </div>
-
-              <div className="min-w-0">
-                <p className="text-sm text-slate-500">Lens option</p>
-
-                <h2 className="mt-1 text-lg font-semibold text-slate-900">
-                  {lensOptionName}
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  Your selected lens feature
-                </p>
-              </div>
-            </div>
-
-            <div className="flex min-h-[120px] items-start gap-4 rounded-lg border border-slate-200 bg-slate-50 p-5">
-              <div className="mt-1 shrink-0 text-xl text-blue-600">
-                ◎
-              </div>
-
-              <div className="min-w-0">
-                <p className="text-sm text-slate-500">Lens index</p>
-
-                <h2 className="mt-1 text-lg font-semibold text-slate-900">
-                  {lensIndexName}
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  Refractive index: {refractiveIndex.toFixed(2)}
-                </p>
-              </div>
+        <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="flex min-h-[120px] items-start gap-4 rounded-lg border border-slate-200 bg-slate-50 p-5">
+            <div className="mt-1 shrink-0 text-xl text-blue-600">◉</div>
+            <div className="min-w-0">
+              <p className="text-sm text-slate-500">Lens type</p>
+              <h2 className="mt-1 text-lg font-semibold text-slate-900">
+                {lensTypeName}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Your selected lens design
+              </p>
             </div>
           </div>
-        )}
 
-        {!isUploadOnly && selectedTechnologyName && (
-          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-sm font-medium text-slate-500">
-              SELECTED LENS TECHNOLOGY
-            </p>
-
-            <div className="mt-3 flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">
-                  {selectedTechnologyName}
-                </h2>
-
-                <p className="mt-1 text-sm text-slate-600">
-                  Lens color:{" "}
-                  {selectedTechnologyColor === "GREY"
-                    ? "Grey"
-                    : "Amber"}
-                </p>
-              </div>
-
-              <span
-                className={`size-9 shrink-0 rounded-full border border-slate-300 ${selectedTechnologyColor === "GREY"
-                  ? "bg-slate-500"
-                  : "bg-amber-500"
-                  }`}
-                role="img"
-                aria-label={`Selected lens color: ${selectedTechnologyColor === "GREY"
-                  ? "Grey"
-                  : "Amber"
-                  }`}
-              />
+          <div className="flex min-h-[120px] items-start gap-4 rounded-lg border border-slate-200 bg-slate-50 p-5">
+            <div className="mt-1 shrink-0 text-xl text-blue-600">◎</div>
+            <div className="min-w-0">
+              <p className="text-sm text-slate-500">Lens option</p>
+              <h2 className="mt-1 text-lg font-semibold text-slate-900">
+                {lensOptionName}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Your selected lens feature
+              </p>
             </div>
           </div>
-        )}
 
-        {!isUploadOnly && selectedCoatings.length > 0 && (
+          <div className="flex min-h-[120px] items-start gap-4 rounded-lg border border-slate-200 bg-slate-50 p-5">
+            <div className="mt-1 shrink-0 text-xl text-blue-600">◎</div>
+            <div className="min-w-0">
+              <p className="text-sm text-slate-500">Lens index</p>
+              <h2 className="mt-1 text-lg font-semibold text-slate-900">
+                {lensIndexName}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Refractive index: {refractiveIndex.toFixed(2)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+          <p className="text-sm font-medium text-slate-500">
+            SELECTED LENS TECHNOLOGY
+          </p>
+          <div className="mt-3 flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                {selectedTechnologyName}
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Lens color: {selectedTechnologyColor === "GREY" ? "Grey" : "Amber"}
+              </p>
+            </div>
+            <span
+              className={`size-9 shrink-0 rounded-full border border-slate-300 ${selectedTechnologyColor === "GREY" ? "bg-slate-500" : "bg-amber-500"}`}
+              role="img"
+              aria-label={`Selected lens color: ${selectedTechnologyColor === "GREY" ? "Grey" : "Amber"}`}
+            />
+          </div>
+        </div>
+
+        {selectedCoatings.length > 0 && (
           <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
             <h2 className="text-lg font-semibold text-slate-900">
               Selected Coatings
             </h2>
-
             <div className="mt-3 flex flex-wrap gap-2">
               {selectedCoatings.map((coating) => (
                 <span
@@ -305,59 +273,34 @@ export default function ConfigurationReview({
                 Prescription Details
               </h2>
             </div>
-
             <div className="overflow-x-auto">
               <table className="w-full min-w-[480px] table-fixed text-left text-sm">
                 <thead className="bg-slate-50 text-slate-500">
                   <tr>
-                    <th className="px-5 py-3 font-medium md:px-6">
-                      Eye
-                    </th>
+                    <th className="px-5 py-3 font-medium md:px-6">Eye</th>
                     <th className="px-5 py-3 font-medium">SPH</th>
                     <th className="px-5 py-3 font-medium">CYL</th>
                     <th className="px-5 py-3 font-medium">Axis</th>
                   </tr>
                 </thead>
-
                 <tbody className="divide-y divide-slate-200 text-slate-700">
                   <tr>
-                    <td className="px-5 py-4 font-medium md:px-6">
-                      Right (OD)
-                    </td>
-                    <td className="px-5 py-4">
-                      {prescription.rightSph || "—"}
-                    </td>
-                    <td className="px-5 py-4">
-                      {prescription.rightCyl || "—"}
-                    </td>
-                    <td className="px-5 py-4">
-                      {prescription.rightAxis || "—"}
-                    </td>
+                    <td className="px-5 py-4 font-medium md:px-6">Right (OD)</td>
+                    <td className="px-5 py-4">{prescription.rightSph || "—"}</td>
+                    <td className="px-5 py-4">{prescription.rightCyl || "—"}</td>
+                    <td className="px-5 py-4">{prescription.rightAxis || "—"}</td>
                   </tr>
-
                   <tr>
-                    <td className="px-5 py-4 font-medium md:px-6">
-                      Left (OS)
-                    </td>
-                    <td className="px-5 py-4">
-                      {prescription.leftSph || "—"}
-                    </td>
-                    <td className="px-5 py-4">
-                      {prescription.leftCyl || "—"}
-                    </td>
-                    <td className="px-5 py-4">
-                      {prescription.leftAxis || "—"}
-                    </td>
+                    <td className="px-5 py-4 font-medium md:px-6">Left (OS)</td>
+                    <td className="px-5 py-4">{prescription.leftSph || "—"}</td>
+                    <td className="px-5 py-4">{prescription.leftCyl || "—"}</td>
+                    <td className="px-5 py-4">{prescription.leftAxis || "—"}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
-
             <div className="border-t border-slate-200 bg-slate-50 px-5 py-4 md:px-6">
-              <p className="text-sm text-slate-500">
-                Pupillary Distance (PD)
-              </p>
-
+              <p className="text-sm text-slate-500">Pupillary Distance (PD)</p>
               <p className="mt-1 font-semibold text-slate-900">
                 {prescription.pd || "—"} mm
               </p>
@@ -370,17 +313,14 @@ export default function ConfigurationReview({
             <h2 className="text-lg font-semibold text-slate-900">
               Prescription Image
             </h2>
-
             <div className="mt-3 flex items-center gap-3">
               <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700">
                 📄
               </div>
-
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-slate-900">
                   {prescriptionImageName ?? prescriptionImage?.name}
                 </p>
-
                 <p className="mt-1 text-sm text-green-700">
                   {prescriptionImageName?.toLowerCase().endsWith(".pdf")
                     ? "File selected"
@@ -395,40 +335,28 @@ export default function ConfigurationReview({
           <h2 className="text-lg font-semibold text-slate-900">
             Price Summary
           </h2>
-
           {pricingUnavailable ? (
             <p role="status" className="mt-4 text-sm text-amber-900">
-              One or more lens prices aren’t configured in the Lens upgrade
-              product. Please contact the store owner.
+              One or more lens prices aren’t configured in the Lens upgrade product. Please contact the store owner.
             </p>
           ) : (
             <div className="mt-4 space-y-3 text-sm">
               <div className="flex justify-between gap-4">
                 <span className="text-slate-600">Frame price</span>
-
                 <span className="font-medium text-slate-900">
                   {formatPrice(framePriceMinor)}
                 </span>
               </div>
-
               {priceItems.map((item) => (
-                <div
-                  key={item.code}
-                  className="flex justify-between gap-4"
-                >
+                <div key={item.code} className="flex justify-between gap-4">
                   <span className="text-slate-600">{item.label}</span>
-
                   <span className="font-medium text-slate-900">
                     {formatPrice(item.amountMinor)}
                   </span>
                 </div>
               ))}
-
               <div className="flex justify-between gap-4 border-t border-slate-200 pt-3 text-base">
-                <span className="font-semibold text-slate-900">
-                  Total
-                </span>
-
+                <span className="font-semibold text-slate-900">Total</span>
                 <span className="font-bold text-slate-900">
                   {formatPrice(totalPriceMinor)}
                 </span>
@@ -452,7 +380,6 @@ export default function ConfigurationReview({
                 {cartError}
               </p>
             )}
-
             <button
               type="button"
               onClick={handleContinueToCart}
