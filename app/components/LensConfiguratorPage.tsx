@@ -463,19 +463,16 @@ export default function LensConfiguratorPage({
             isUploadOnly={prescriptionMethod === "upload"}
             framePriceMinor={framePriceMinor}
             lensVariantIdByCode={lensVariantIdByCode}
-            lensTotalMinor={prescriptionMethod === "upload" ? 0 : priceResult?.lensTotalMinor ?? 0}
-            totalPriceMinor={prescriptionMethod === "upload" ? framePriceMinor : priceResult?.totalMinor ?? framePriceMinor}
+            lensTotalMinor={priceResult?.lensTotalMinor ?? 0}
+            totalPriceMinor={priceResult?.totalMinor ?? framePriceMinor}
             pricingUnavailable={priceUnavailable}
-            lensVariantsLoaded={
-              pricingAvailable &&
-              (prescriptionMethod === "upload" || lensVariantsLoaded)
-            }
+            lensVariantsLoaded={pricingAvailable && lensVariantsLoaded}
             currencyCode={currencyCode}
             variantId={product.variantId}
-            onBack={() => setStep(prescriptionMethod === "upload" ? 3 : 7)}
-            priceItems={prescriptionMethod === "upload" ? [] : priceResult?.items ?? []}
-            selectedCoatings={prescriptionMethod === "upload" ? [] : selectedCoatings}
-            selectedTechnologyName={prescriptionMethod === "upload" ? "" : selectedTechnologyName ?? ""}
+            onBack={() => setStep(7)}
+            priceItems={priceResult?.items ?? []}
+            selectedCoatings={selectedCoatings}
+            selectedTechnologyName={selectedTechnologyName ?? ""}
             selectedTechnologyColor={selectedTechnologyColor}
             prescriptionImage={prescriptionImage}
             prescriptionImageName={prescriptionImageName}
