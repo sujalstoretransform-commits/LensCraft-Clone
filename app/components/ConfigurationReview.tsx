@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import type { PrescriptionData } from "./PrescriptionForm";
 import { formatMinorUnits } from "app/utils/currency";
@@ -54,8 +53,7 @@ export default function ConfigurationReview({
   selectedTechnologyColor,
   prescriptionImage,
   prescriptionImageName,
-}: ConfigurationReviewProps
-) {
+}: ConfigurationReviewProps) {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [cartError, setCartError] = useState<string | null>(null);
 
@@ -67,14 +65,14 @@ export default function ConfigurationReview({
   const handleContinueToCart = () => {
     if (!isUploadOnly && !lensVariantsLoaded) {
       setCartError(
-        "The store is missing one or more lens price variants. Please contact the store owner.",
+        "The store is missing one or more lens price variants. Please contact the store owner."
       );
       return;
     }
 
     if (!variantId) {
       setCartError(
-        "Frame variant is missing. Please go back and select your frame.",
+        "Frame variant is missing. Please go back and select your frame."
       );
       return;
     }
@@ -87,7 +85,7 @@ export default function ConfigurationReview({
       mappedPriceItems = mapLensCartPriceItems(
         isUploadOnly ? [] : priceItems,
         lensVariantIdByCode,
-        isUploadOnly ? 0 : lensTotalMinor,
+        isUploadOnly ? 0 : lensTotalMinor
       );
     } catch (error) {
       console.error("Lens cart pricing could not be verified:", error);
@@ -97,54 +95,40 @@ export default function ConfigurationReview({
     }
 
     const groupId = crypto.randomUUID();
-    const lensDetails: Record<string, string> = isUploadOnly
-      ? {
-          "Prescription Image":
-            prescriptionImageName ??
-            prescriptionImage?.name ??
-            "Uploaded prescription",
-        }
-      : {
-          Lens: `${lensTypeName} / ${lensIndexName}`,
-          "Lens Type": lensTypeName,
-          "Lens Option": lensOptionName,
-          "Lens Index": lensIndexName,
-          "Refractive Index": String(refractiveIndex),
-          "Right SPH": prescription?.rightSph || "0",
-          "Right CYL": prescription?.rightCyl || "0",
-          "Right Axis": prescription?.rightAxis || "N/A",
-          "Left SPH": prescription?.leftSph || "0",
-          "Left CYL": prescription?.leftCyl || "0",
-          "Left Axis": prescription?.leftAxis || "N/A",
-          "Selected Coating":
-            selectedCoatings.length > 0
-              ? selectedCoatings.join(", ")
-              : "None",
-          "Selected Technology": selectedTechnologyName || "N/A",
-          "Selected Technology Color": selectedTechnologyColor,
-          "Lens price breakdown": priceItems
-            .map(
-              (item) =>
-                `${item.label}: ${formatPrice(item.amountMinor)}`,
-            )
-            .join("; "),
-          "Prescription Image":
-            prescriptionImageName ??
-            prescriptionImage?.name ??
-            "None",
-          PD: prescription?.pd || "N/A",
-        };
 
-    const shopifyRoot =
-      (
-        window as Window & {
-          Shopify?: {
-            routes?: {
-              root?: string;
-            };
-          };
-        }
-      ).Shopify?.routes?.root ?? "/";
+    const baseDetails: Record<string, string> = {
+      Lens: `${lensTypeName} / ${lensIndexName}`,
+      "Lens Type": lensTypeName,
+      "Lens Option": lensOptionName,
+      "Lens Index": lensIndexName,
+      "Refractive Index": String(refractiveIndex),
+      "Right SPH": prescription?.rightSph ?? "0",
+      "Right CYL": prescription?.rightCyl ?? "0",
+      "Right Axis": prescription?.rightAxis ?? "N/A",
+      "Left SPH": prescription?.leftSph ?? "0",
+      "Left CYL": prescription?.leftCyl ?? "0",
+      "Left Axis": prescription?.leftAxis ?? "N/A",
+      "Selected Coating":
+        selectedCoatings.length > 0 ? selectedCoatings.join(", ") : "None",
+      "Selected Technology": selectedTechnologyName || "N/A",
+      "Selected Technology Color": selectedTechnologyColor,
+      "Lens price breakdown": priceItems
+        .map((item) => `${item.label}: ${formatPrice(item.amountMinor)}`)
+        .join("; "),
+      "Prescription Image":
+        prescriptionImageName ??
+        prescriptionImage?.name ??
+        (isUploadOnly ? "Uploaded prescription" : "None"),
+      PD: prescription?.pd ?? "N/A",
+    };
+
+    const lensDetails: Record<string, string> = isUploadOnly
+      ? { ...baseDetails, uploadOnly: "true" }
+      : baseDetails;
+
+    const shopifyRoot = (window as Window & {
+      Shopify?: { routes?: { root?: string } };
+    }).Shopify?.routes?.root ?? "/";
 
     let rootPath = "/";
     try {
@@ -153,6 +137,7 @@ export default function ConfigurationReview({
       rootPath = "/";
     }
     const root = rootPath.endsWith("/") ? rootPath : `${rootPath}/`;
+
     const fields: Record<string, string> = {
       "items[0][id]": variantId,
       "items[0][quantity]": "1",
@@ -197,16 +182,8 @@ export default function ConfigurationReview({
       <div className="w-full">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
-            {isUploadOnly
-              ? "Review Your Prescription Upload"
-              : "Review Your Configuration"}
+            Review your configuration
           </h1>
-
-          <p className="mt-2 text-sm text-slate-500">
-            {isUploadOnly
-              ? "Check your uploaded prescription before continuing."
-              : "Check your lens selection and prescription before continuing."}
-          </p>
         </div>
 
         {!isUploadOnly && (
@@ -471,7 +448,7 @@ export default function ConfigurationReview({
 
           <div className="flex flex-col items-start gap-2 sm:items-end">
             {cartError && (
-              <p role="alert" className="text-sm text-red-600">
+              <p role="alert" className="mt-4 text-sm text-red-600">
                 {cartError}
               </p>
             )}
@@ -479,16 +456,10 @@ export default function ConfigurationReview({
             <button
               type="button"
               onClick={handleContinueToCart}
-              disabled={
-                isAddingToCart ||
-                pricingUnavailable ||
-                (!isUploadOnly && !canContinueToCart)
-              }
+              disabled={!canContinueToCart || isAddingToCart}
               className="rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isAddingToCart
-                ? "Adding to cart…"
-                : "Continue to Cart"}
+              {isAddingToCart ? "Adding to cart…" : "Continue to Cart"}
             </button>
           </div>
         </div>
