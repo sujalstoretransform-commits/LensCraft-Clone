@@ -64,16 +64,9 @@ export default function ConfigurationReview({
     .map((item) => `${item.label}: ${formatPrice(item.amountMinor)}`)
     .join("; ");
 
-  const canContinueToCart = isUploadOnly || lensVariantsLoaded;
+  const canContinueToCart = lensVariantsLoaded;
 
   const handleContinueToCart = () => {
-    if (!isUploadOnly && !lensVariantsLoaded) {
-      setCartError(
-        "The store is missing one or more lens price variants. Please contact the store owner."
-      );
-      return;
-    }
-
     if (!variantId) {
       setCartError("Frame variant is missing. Please go back and select your frame.");
       return;
