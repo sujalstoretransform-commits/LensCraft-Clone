@@ -250,7 +250,6 @@ export default function LensConfiguratorPage({
             selectedLensTypeCode={selectedVisionTypeCode}
             lensTypes={lensTypesWithPrices}
             onSelectLensType={(lensType) => {
-              if (lensType !== "single_vision_distance" && lensType !== "single_vision_reading" && lensType !== "progressive" && lensType !== 'non_prescription') return;
               setSelectedVisionTypeCode(lensType);
               setSelectedLensIndex(null);
               setSelectedLensIndexCode("")
@@ -262,6 +261,8 @@ export default function LensConfiguratorPage({
             onContinue={(lensType) => {
               if (lensType === 'non_prescription') {
                 setStep(4)
+              } else if (lensType === 'reading_glasses') {
+                setStep(3)
               } else {
                 setStep(2)
               }
