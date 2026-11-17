@@ -249,7 +249,7 @@ export default function ConfigurationReview({
 
         {selectedCoatings.length > 0 && (
           <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-sm font-medium text-slate-500">
               Selected Coatings
             </h2>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -280,10 +280,6 @@ export default function ConfigurationReview({
                   Your selected reading lens power
                 </p>
               </div>
-
-              <span className="flex size-11 items-center justify-center rounded-full bg-blue-100 text-xl font-semibold text-blue-700">
-                +
-              </span>
             </div>
           </div>
         )}
@@ -291,7 +287,7 @@ export default function ConfigurationReview({
         {prescription && (
           <div className="mt-8 w-full overflow-hidden rounded-xl border border-slate-200">
             <div className="border-b border-slate-200 px-5 py-4 md:px-6">
-              <h2 className="text-lg font-semibold text-slate-900">
+              <h2 className="text-sm font-medium text-slate-500">
                 Prescription Details
               </h2>
             </div>
@@ -332,7 +328,7 @@ export default function ConfigurationReview({
 
         {(prescriptionImage || prescriptionImageName) && (
           <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="text-sm font-medium text-slate-500">
               Prescription Image
             </h2>
             <div className="mt-3 flex items-center gap-3">
@@ -354,7 +350,8 @@ export default function ConfigurationReview({
         )}
 
         <div className="mt-8 w-full rounded-xl border border-slate-200 bg-slate-50 p-6">
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-sm font-medium text-slate-500">
+
             Price Summary
           </h2>
           {pricingUnavailable ? (
