@@ -493,6 +493,7 @@ export default function LensConfiguratorPage({
             lensIndexName={selectedLensIndex?.displayName ?? ""}
             refractiveIndex={selectedLensIndex?.refractiveIndex ?? 0}
             prescription={prescriptionValues}
+            magnificantPower={selectedReadingPower}
             isUploadOnly={prescriptionMethod === "upload"}
             framePriceMinor={framePriceMinor}
             lensVariantIdByCode={lensVariantIdByCode}

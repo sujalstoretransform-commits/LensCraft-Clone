@@ -9,6 +9,7 @@ type ConfigurationReviewProps = {
   lensIndexName: string;
   refractiveIndex: number;
   prescription?: PrescriptionData;
+  magnificantPower: number | null;
   isUploadOnly: boolean;
   onBack?: () => void;
   framePriceMinor: number;
@@ -37,6 +38,7 @@ export default function ConfigurationReview({
   lensIndexName,
   refractiveIndex,
   prescription,
+  magnificantPower,
   isUploadOnly,
   onBack,
   framePriceMinor,
@@ -103,6 +105,10 @@ export default function ConfigurationReview({
       "Left SPH": prescription?.leftSph ?? "0",
       "Left CYL": prescription?.leftCyl ?? "0",
       "Left Axis": prescription?.leftAxis ?? "N/A",
+      "Reading Magnification Power":
+        magnificantPower !== null
+          ? `${magnificantPower.toFixed(2)}×`
+          : "N/A",
       "Selected Coating":
         selectedCoatings.length > 0 ? selectedCoatings.join(", ") : "None",
       "Selected Technology": selectedTechnologyName || "N/A",
@@ -255,6 +261,29 @@ export default function ConfigurationReview({
                   {coating}
                 </span>
               ))}
+            </div>
+          </div>
+        )}
+
+        {magnificantPower !== null && (
+          <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <p className="text-sm font-medium text-slate-500">
+              SELECTED MAGNIFICATION POWER
+            </p>
+
+            <div className="mt-3 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900">
+                  {magnificantPower.toFixed(2)}×
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Your selected reading lens power
+                </p>
+              </div>
+
+              <span className="flex size-11 items-center justify-center rounded-full bg-blue-100 text-xl font-semibold text-blue-700">
+                +
+              </span>
             </div>
           </div>
         )}
