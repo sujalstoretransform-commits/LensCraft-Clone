@@ -1,5 +1,7 @@
 import { createWorker, OEM, PSM } from "tesseract.js";
 import { extractText, getDocumentProxy } from "unpdf";
+import sharp from 'sharp'
+import path from "path";
 
 export type ExtractedPrescription = {
     rightSph: string | null;
@@ -99,7 +101,6 @@ function parsePrescriptionText(rawText: string): ExtractedPrescription {
             );
         }
 
-        // Support explicit labels such as Right SPH and Left CYL.
         if (result.rightSph === null) {
             result.rightSph = extractValue(
                 line,
@@ -150,16 +151,20 @@ async function ocrImage(buffer: Buffer): Promise<string> {
     let worker: Awaited<ReturnType<typeof createWorker>> | undefined;
 
     try {
-        worker = await createWorker("eng");
+        console.time("createWorker");
+        worker = await createWorker("eng", OEM.LSTM_ONLY, {
+            langPath: path.join(process.cwd(), "tessdata"),
+        });
+        console.timeEnd("createWorker");
 
         await worker.setParameters({
             tessedit_ocr_engine_mode: OEM.LSTM_ONLY,
             tessedit_pageseg_mode: PSM.AUTO,
         });
 
+        console.time("recognize");
         const { data } = await worker.recognize(buffer);
-
-        console.info("OCR raw text:", data.text);
+        console.timeEnd("recognize");
 
         return data.text;
     } finally {
@@ -190,7 +195,14 @@ export async function extractPrescription(
             ["image/jpeg", "image/png", "image/webp"].includes(file.type)
         ) {
             const buffer = Buffer.from(await file.arrayBuffer());
-            prescription = parsePrescriptionText(await ocrImage(buffer));
+
+            const resized = await sharp(buffer)
+                .rotate()
+                .resize({ width: 1800, withoutEnlargement: true })
+                .grayscale()
+                .toBuffer();
+
+            prescription = parsePrescriptionText(await ocrImage(resized));
         } else {
             throw new Error("Unsupported prescription file type.");
         }
