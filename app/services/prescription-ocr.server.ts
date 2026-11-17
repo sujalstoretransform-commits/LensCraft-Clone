@@ -156,22 +156,16 @@ async function ocrImage(buffer: Buffer): Promise<string> {
     let worker: Awaited<ReturnType<typeof createWorker>> | undefined;
 
     try {
-        console.time("createWorker");
         worker = await createWorker("eng", OEM.LSTM_ONLY, {
-            langPath: path.join(process.cwd(), "tessdata"),
             cachePath: "/tmp",
         });
-        console.timeEnd("createWorker");
 
         await worker.setParameters({
-            tessedit_ocr_engine_mode: OEM.LSTM_ONLY,
             tessedit_pageseg_mode: PSM.AUTO,
         });
 
-        console.time("recognize");
         const { data } = await worker.recognize(buffer);
-        console.timeEnd("recognize");
-
+        console.info("OCR raw text:", data.text);
         return data.text;
     } finally {
         if (worker) {
