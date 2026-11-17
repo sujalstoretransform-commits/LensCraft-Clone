@@ -17,6 +17,7 @@ import CoatingReview, { type CoatingSelection } from "./CoatingReview";
 import LensTechnologySelector from "./LensTechnologySelector";
 import SavedPrescriptionSelector from "./SavedPrescriptionSelector";
 import PrescriptionUpload from "./PrescriptionUpload";
+import ReadingLensType from "./ReadingLensType";
 
 type PriceResult = {
   items: {
@@ -75,6 +76,8 @@ export default function LensConfiguratorPage({
   const selectedTechnologyName = catalog.lensTechnology.find((technology) => technology.code === selectedTechnologyCode)?.name
 
   const [prescriptionStep, setPrescriptionStep] = useState<"saved" | "review" | null>(null);
+
+  const [selectedReadingPower, setSelectedReadingPower] = useState<number | null>(null);
 
   const usesLensTechnology = [
     "light_adaptive",
@@ -287,6 +290,22 @@ export default function LensConfiguratorPage({
               else {
                 return
               }
+            }}
+          />
+        )}
+
+        {step === 3 && selectedVisionTypeCode === 'reading_glasses' && (
+          <ReadingLensType
+            lensIndexName={selectedLensTypeName}
+            refractiveIndex={
+              lensIndices.find((index) => index.code === selectedLensIndexCode)
+                ?.refractiveIndex ?? null
+            }
+            selectedPower={selectedReadingPower}
+            onBack={() => setStep(1)}
+            onContinue={(power) => {
+              setSelectedReadingPower(power)
+              setStep(4)
             }}
           />
         )}
