@@ -1,7 +1,6 @@
 export function cartTransformRun(input) {
   const groups = new Map();
 
-  // Group frame and lens add-on variants together.
   for (const line of input.cart.lines) {
     if (line.merchandise.__typename !== "ProductVariant") continue;
 
@@ -48,17 +47,29 @@ export function cartTransformRun(input) {
       continue;
     }
 
-    const attributes = Object.entries(lensDetails)
-      .filter(
-        ([key, value]) =>
-          typeof key === "string" &&
-          typeof value === "string" &&
-          value.length > 0
-      )
-      .map(([key, value]) => ({
-        key,
-        value,
-      }));
+    const attributes = [
+      ...Object.entries(lensDetails)
+        .filter(
+          ([key, value]) =>
+            typeof key === "string" &&
+            typeof value === "string" &&
+            value.length > 0
+        )
+        .map(([key, value]) => ({ key, value })),
+
+      {
+        key: "_lens_group",
+        value: parentLine.lensGroup.value,
+      },
+      {
+        key: "_lens_parent",
+        value: "true",
+      },
+      {
+        key: "_lens_details",
+        value: parentLine.lensDetails.value,
+      },
+    ];
 
     operations.push({
       linesMerge: {
