@@ -59,7 +59,7 @@ export async function createDefaultLensProduct(admin: AdminApiContext) {
         nodes { id handle title options { id name optionValues { id name } } tags variants(first: 250) { nodes { id sku } } }
       }
     }`, { variables: { handle, query: `handle:${handle}` } });
-  const lookupData = await lookup.json() as any;
+  const lookupData = await lookup.json<Record<string, unknown>>();
   const lookupErrors = graphqlErrors(lookupData);
   if (!lookup.ok || lookupErrors.length) throw new Error(`Could not look up lens catalog product: ${JSON.stringify(lookupErrors)}`);
 
@@ -81,7 +81,7 @@ export async function createDefaultLensProduct(admin: AdminApiContext) {
         tags: [defaultLensProductTag],
         productOptions: [{ name: optionName, values: optionValues }],
       } } });
-    const createData = await create.json() as any;
+    const createData = await create.json() as unknown;
     const createErrors = graphqlErrors(createData);
     const userErrors = createData.data?.productCreate?.userErrors;
     if (!create.ok || createErrors.length || userErrors?.length || !createData.data?.productCreate?.product) {

@@ -165,7 +165,6 @@ async function ocrImage(buffer: Buffer): Promise<string> {
         });
 
         const { data } = await worker.recognize(buffer);
-        console.info("OCR raw text:", data.text);
         return data.text;
     } finally {
         if (worker) {
@@ -178,8 +177,6 @@ async function extractFromPdf(file: File): Promise<ExtractedPrescription> {
     const pdf = await getDocumentProxy(new Uint8Array(await file.arrayBuffer()));
 
     const { text } = await extractText(pdf, { mergePages: true });
-    console.info("PDF raw text:", text);
-
     return parsePrescriptionText(text);
 }
 
@@ -206,8 +203,6 @@ export async function extractPrescription(
         } else {
             throw new Error("Unsupported prescription file type.");
         }
-
-        console.info("Extracted prescription:", prescription);
 
         return {
             prescription,

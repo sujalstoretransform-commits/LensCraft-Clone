@@ -10,7 +10,7 @@ import { del, get, put } from "@vercel/blob";
 import { validatePrescription } from "app/services/prescription";
 
 import { extractPrescription } from "app/services/prescription-ocr.server";
-import { error } from "console";
+
 
 const GUEST_EXPIRY_DAYS = 30;
 const GUEST_EXPIRY_SECONDS = GUEST_EXPIRY_DAYS * 24 * 60 * 60;
