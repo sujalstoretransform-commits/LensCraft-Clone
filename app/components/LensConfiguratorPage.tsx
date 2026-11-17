@@ -466,7 +466,7 @@ export default function LensConfiguratorPage({
           />
         )}
 
-        {step === 8 && (prescriptionMethod === "upload" || (selectedLensIndex && prescriptionValues)) && (
+        {step === 8 && (
           <ConfigurationReview
             lensTypeName={selectedLensTypeName}
             lensOptionName={selectedLensOptionName}
