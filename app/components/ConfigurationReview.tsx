@@ -250,7 +250,7 @@ export default function ConfigurationReview({
         {selectedCoatings.length > 0 && (
           <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
             <h2 className="text-sm font-medium text-slate-500">
-              Selected Coatings
+              SELECTED COATINGS
             </h2>
             <div className="mt-3 flex flex-wrap gap-2">
               {selectedCoatings.map((coating) => (
@@ -352,7 +352,7 @@ export default function ConfigurationReview({
         <div className="mt-8 w-full rounded-xl border border-slate-200 bg-slate-50 p-6">
           <h2 className="text-sm font-medium text-slate-500">
 
-            Price Summary
+            PRICE SUMMARY
           </h2>
           {pricingUnavailable ? (
             <p role="status" className="mt-4 text-sm text-amber-900">
