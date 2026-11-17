@@ -154,6 +154,7 @@ async function ocrImage(buffer: Buffer): Promise<string> {
         console.time("createWorker");
         worker = await createWorker("eng", OEM.LSTM_ONLY, {
             langPath: path.join(process.cwd(), "tessdata"),
+            cachePath: "/tmp",
         });
         console.timeEnd("createWorker");
 

@@ -2,7 +2,17 @@
   "headers": [
     {
       "source": "/assets/(.*)",
-      "headers": [{ "key": "Access-Control-Allow-Origin", "value": "*" }]
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
     }
-  ]
+  ],
+  "functions": {
+    "**/*": {
+      "includeFiles": "{node_modules/.pnpm/tesseract.js-core*/**,node_modules/.pnpm/tesseract.js@*/**,tessdata/**}"
+    }
+  }
 }
