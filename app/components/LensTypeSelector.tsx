@@ -19,7 +19,7 @@ type LensTypeSelectorProps = {
     selectedLensTypeCode: string;
     lensTypes: LensType[];
     onSelectLensType: (lensTypeCode: string) => void;
-    onContinue: () => void;
+    onContinue: (lensTypeCode: string) => void;
 }
 
 const lensImages: Record<string, string> = {
@@ -109,7 +109,9 @@ export default function LensTypeSelector({
             <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
                 <button
                     type="button"
-                    onClick={onContinue}
+                    onClick={() => {
+                        onContinue(selectedLensTypeCode)
+                    }}
                     disabled={!selectedLensTypeCode}
                     className="rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >

@@ -247,7 +247,7 @@ export default function LensConfiguratorPage({
             selectedLensTypeCode={selectedVisionTypeCode}
             lensTypes={lensTypesWithPrices}
             onSelectLensType={(lensType) => {
-              if (lensType !== "single_vision_distance" && lensType !== "single_vision_reading" && lensType !== "progressive") return;
+              if (lensType !== "single_vision_distance" && lensType !== "single_vision_reading" && lensType !== "progressive" && lensType !== 'non_prescription') return;
               setSelectedVisionTypeCode(lensType);
               setSelectedLensIndex(null);
               setSelectedLensIndexCode("")
@@ -256,7 +256,13 @@ export default function LensConfiguratorPage({
               setPriceUnavailable(!pricingAvailable)
               setPrescriptionErrors([]);
             }}
-            onContinue={() => setStep(2)}
+            onContinue={(lensType) => {
+              if (lensType === 'non_prescription') {
+                setStep(4)
+              } else {
+                setStep(2)
+              }
+            }}
           />
         )}
 
