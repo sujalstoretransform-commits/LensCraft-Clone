@@ -282,6 +282,74 @@ const lensCompatibilityMappings: LensTypeMapping[] = [
       },
     ],
   },
+
+
+  {
+    lensTypeCode: "reading_glasses",
+    options: [
+      {
+        lensOptionCode: "clear",
+        technologies: [],
+        indexes: ["index_156", "index_159", "index_161", "index_167", "index_174",],
+      },
+      {
+        lensOptionCode: "blue_light",
+        technologies: [],
+        indexes: ["index_156", "index_159", "index_161", "index_167", "index_174",],
+      },
+      {
+        lensOptionCode: "light_adaptive",
+        technologies: [
+          {
+            technologyCode: "standard_light_adaptive",
+            indexes: ["index_156", "index_159", "index_161", "index_167", "index_174"],
+          },
+          {
+            technologyCode: "standard_light_adaptive_blue_light",
+            indexes: ["index_156", "index_159", "index_161", "index_167", "index_174"],
+          },
+          {
+            technologyCode: "transitions_gen_s",
+            indexes: ["index_150", "index_159", "index_161", "index_167", "index_174"],
+          },
+          {
+            technologyCode: "transitions_xtractive",
+            indexes: ["index_150", "index_161", "index_167"],
+          },
+          {
+            technologyCode: "in_car_light_adaptive_blue_light",
+            indexes: ["index_161", "index_167"],
+          },
+        ],
+      },
+      {
+        lensOptionCode: "tinted",
+        technologies: [
+          {
+            technologyCode: "sunglasses_tinted",
+            indexes: ["index_161", "index_167"],
+          },
+          {
+            technologyCode: "sunglasses_tinted_blue_light",
+            indexes: ["index_161", "index_167"],
+          },
+        ],
+      },
+      {
+        lensOptionCode: "sunglasses_polarized",
+        technologies: [
+          {
+            technologyCode: "sunglasses_solid_polarized",
+            indexes: ["index_156", "index_159", "index_161", "index_167"],
+          },
+          {
+            technologyCode: "sunglasses_mirror_polarized",
+            indexes: ["index_156", "index_161", "index_167"],
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 async function seedLensCompatibility() {

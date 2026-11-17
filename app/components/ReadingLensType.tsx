@@ -38,28 +38,12 @@ export default function ReadingLensType({
                     </p>
 
                     <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-                        Select Your Magnification
+                        Enter Your Magnification
                     </h1>
 
                     <p className="mt-3 text-slate-600">
                         Enter the reading power for your glasses.
                     </p>
-                </div>
-
-                <div className="mb-6 flex items-center gap-4 rounded-lg bg-slate-50 p-5">
-                    <div className="shrink-0 text-3xl text-blue-600">
-                        ◎
-                    </div>
-
-                    <div>
-                        <h2 className="text-base font-semibold text-slate-900">
-                            Reading Glasses
-                        </h2>
-
-                        <p className="mt-1 text-sm text-slate-600">
-                            Designed for reading, working and everyday close-up tasks.
-                        </p>
-                    </div>
                 </div>
 
                 <div className="mb-6 rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
@@ -104,18 +88,6 @@ export default function ReadingLensType({
                         </p>
                     )}
                 </div>
-
-                {isValid && numericValue !== null && (
-                    <div className="mt-6 max-w-md rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-sm text-slate-500">
-                            Selected Magnification
-                        </p>
-
-                        <p className="mt-1 text-xl font-bold text-slate-900">
-                            +{numericValue.toFixed(2)}
-                        </p>
-                    </div>
-                )}
 
                 <div className="mt-8 flex flex-col gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
                     <button
