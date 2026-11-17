@@ -52,7 +52,7 @@ export default function LensConfiguratorPage({
   const [prescriptionImage, setPrescriptionImage] = useState<File | null>(null);
   const [prescriptionImageName, setPrescriptionImageName] = useState<string | null>(null);
   const [prescriptionErrors, setPrescriptionErrors] = useState<string[]>([]);
-  const [selectedVisionTypeCode, setSelectedVisionTypeCode] = useState("single_vision_distance",);
+  const [selectedVisionTypeCode, setSelectedVisionTypeCode] = useState("single_vision_distance");
   const [selectedMethod, setSelectedMethod] = useState<PrescriptionMethodCode | null>("manual");
   const [selectedLensIndexCode, setSelectedLensIndexCode] = useState("");
   const [selectedLensIndex, setSelectedLensIndex] = useState<{
@@ -349,7 +349,14 @@ export default function LensConfiguratorPage({
             lensOptions={catalog.lensOptions.filter(
               (option): option is typeof option & { category: "lens_type" } => option.category === "lens_type",
             )}
-            onBack={() => setStep(3)}
+            onBack={() => {
+              if (selectedVisionTypeCode === 'non_prescription') {
+                setStep(1)
+              }
+              else {
+                setStep(3)
+              }
+            }}
             onContinue={(lensOptionCode) => {
               setSelectedLensOptionCode(lensOptionCode);
               setSelectedLensIndex(null);
