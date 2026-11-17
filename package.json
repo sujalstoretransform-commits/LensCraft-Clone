@@ -49,6 +49,7 @@
     "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "tesseract.js": "^7.0.0",
+    "tesseract.js-core": "7.0.0",
     "unpdf": "^2.2.1",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^5.0.5"

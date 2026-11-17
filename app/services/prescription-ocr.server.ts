@@ -2,6 +2,11 @@ import { createWorker, OEM, PSM } from "tesseract.js";
 import { extractText, getDocumentProxy } from "unpdf";
 import sharp from 'sharp'
 import path from "path";
+import fs from 'node:fs'
+
+void fs.existsSync(
+    path.join(process.cwd(), "node_modules/tesseract.js-core/tesseract-core-relaxedsimd.wasm"),
+);
 
 export type ExtractedPrescription = {
     rightSph: string | null;
