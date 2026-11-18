@@ -136,7 +136,7 @@ export default function PrescriptionUpload({
                             pd: found.pd ?? "",
                         },
                         responseJson.error ??
-                            "We couldn't read all values from your file.",
+                        "We couldn't read all values from your file.",
                     );
                     return;
                 }
@@ -171,11 +171,17 @@ export default function PrescriptionUpload({
     return (
         <section className="w-full bg-white px-5 py-8 md:px-12">
             <div className="w-full">
+
                 <div className="mb-8">
-                    <h2 className="text-2xl font-semibold text-slate-900">
-                        Upload your prescription
-                    </h2>
-                    <p className="mt-2 text-sm text-slate-500">
+                    <p className="text-sm font-semibold text-blue-600">
+                        LENS CONFIGURATION
+                    </p>
+
+                    <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+                        Upload Your Prescription
+                    </h1>
+
+                    <p className="mt-3 text-slate-600">
                         Upload a clear photo or PDF of your latest prescription.
                     </p>
                 </div>

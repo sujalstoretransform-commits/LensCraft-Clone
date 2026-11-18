@@ -42,8 +42,8 @@ export default function PrescriptionSelection({
     <section className="w-full px-5 py-8 md:px-12 md:py-12">
       <div className="w-full">
         <div className="mb-8">
-          <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-blue-600">
-            Prescription
+          <p className="text-sm font-semibold text-blue-600">
+            LENS CONFIGURATION
           </p>
 
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">

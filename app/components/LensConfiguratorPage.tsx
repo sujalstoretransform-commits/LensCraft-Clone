@@ -249,7 +249,8 @@ export default function LensConfiguratorPage({
             currencyCode={currencyCode}
             selectedLensTypeCode={selectedVisionTypeCode}
             lensTypes={lensTypesWithPrices}
-            onSelectLensType={(lensType) => {
+            onSelectLensType={setSelectedVisionTypeCode}
+            onContinue={(lensType) => {
               setSelectedVisionTypeCode(lensType);
               setSelectedLensIndex(null);
               setSelectedLensIndexCode("")
@@ -257,8 +258,7 @@ export default function LensConfiguratorPage({
               setPriceError("")
               setPriceUnavailable(!pricingAvailable)
               setPrescriptionErrors([]);
-            }}
-            onContinue={(lensType) => {
+
               if (lensType === 'non_prescription') {
                 setStep(4)
               } else if (lensType === 'reading_glasses') {

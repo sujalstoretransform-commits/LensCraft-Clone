@@ -18,7 +18,7 @@ type LensTypeSelectorProps = {
     currencyCode: string;
     selectedLensTypeCode: string;
     lensTypes: LensType[];
-    onSelectLensType: (lensTypeCode: string) => void;
+    onSelectLensType: (typeCode: string) => void
     onContinue: (lensTypeCode: string) => void;
 }
 
@@ -65,9 +65,7 @@ export default function LensTypeSelector({
                                 key={lens.code}
                                 type="button"
                                 aria-pressed={isSelected}
-                                onClick={() => {
-                                    onSelectLensType(lens.code)
-                                }}
+                                onClick={() => { onSelectLensType(lens.code) }}
                                 className={`relative flex min-h-48 flex-col items-start rounded-lg border p-5 text-left transition-colors ${isSelected
                                     ? "border-blue-500 bg-blue-50/50 ring-1 ring-blue-500"
                                     : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50"
