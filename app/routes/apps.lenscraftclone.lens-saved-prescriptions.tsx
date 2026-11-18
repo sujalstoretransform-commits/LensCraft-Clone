@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { authenticate } from "../shopify.server";
 import type { ActionFunctionArgs } from "react-router";
 import {

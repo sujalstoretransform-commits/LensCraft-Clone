@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import "@shopify/shopify-app-react-router/adapters/node";
 import {
   type AdminApiContext,
