@@ -270,7 +270,7 @@ export default function LensConfiguratorPage({
           />
         )}
 
-        {step === 2 && (
+        {step === 2 && selectedVisionTypeCode !== 'reading_glasses' && selectedVisionTypeCode !== 'non_prescription' && (
           <PrescriptionSelection
             selectedMethod={selectedMethod}
             methods={catalog.prescriptionMethods}
@@ -311,7 +311,7 @@ export default function LensConfiguratorPage({
           />
         )}
 
-        {step === 3 && prescriptionMethod !== "manual" && prescriptionStep === "saved" && (
+        {step === 3 && selectedVisionTypeCode !== 'reading_glasses' && selectedVisionTypeCode !== 'non_prescription' && prescriptionMethod !== "manual" && prescriptionStep === "saved" && (
           <SavedPrescriptionSelector
             proxyPathPrefix={proxyPathPrefix}
             errors={prescriptionErrors}
@@ -330,7 +330,7 @@ export default function LensConfiguratorPage({
           />
         )}
 
-        {step === 3 && prescriptionMethod === 'manual' && (
+        {step === 3 && selectedVisionTypeCode !== 'reading_glasses' && selectedVisionTypeCode !== 'non_prescription' && prescriptionMethod === 'manual' && (
           <PrescriptionForm
             lensIndexName={selectedLensTypeName}
             proxyPathPrefix={proxyPathPrefix}
@@ -349,7 +349,7 @@ export default function LensConfiguratorPage({
           />
         )}
 
-        {step === 3 && prescriptionMethod === 'upload' && (
+        {step === 3 && selectedVisionTypeCode !== 'reading_glasses' && selectedVisionTypeCode !== 'non_prescription' && prescriptionMethod === 'upload' && (
           <PrescriptionUpload
             proxyPathPrefix={proxyPathPrefix}
             errors={prescriptionErrors}
