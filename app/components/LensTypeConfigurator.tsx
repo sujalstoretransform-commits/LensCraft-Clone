@@ -74,7 +74,6 @@ export default function LensTypeConfigurator({
                             >
                                 <div className="flex items-start justify-between gap-3">
                                     <span>
-                                        {lens.image && <img src={lens.image} alt="" className="mb-3 size-16 rounded-lg object-cover" />}
                                         <h2 className="text-base font-semibold text-slate-900">{lens.name}</h2>
                                     </span>
 

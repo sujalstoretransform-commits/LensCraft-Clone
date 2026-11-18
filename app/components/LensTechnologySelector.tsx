@@ -115,7 +115,6 @@ export default function LensTechnologySelector({
                                         </span>
 
                                         <div className="min-w-0">
-                                            {technology.image && <img src={technology.image} alt="" className="mb-3 size-16 rounded-lg object-cover" />}
                                             <h2 className="font-semibold text-slate-900">
                                                 {technology.name}
                                             </h2>

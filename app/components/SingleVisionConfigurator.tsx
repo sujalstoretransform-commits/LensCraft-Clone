@@ -65,7 +65,7 @@ export default function SingleVisionConfigurator({
                     </p>
 
                     <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-                        Single Vision Lenses
+                        Choose Your Lens Index
                     </h1>
 
                     <p className="mt-3 text-slate-600">
@@ -120,7 +120,6 @@ export default function SingleVisionConfigurator({
                                         <h2 className="mt-2 font-semibold text-slate-900">
                                             {index.displayName}
                                         </h2>
-                                        {index.image && <img src={index.image} alt="" className="mt-3 size-16 rounded-lg object-cover" />}
 
                                         <p className="mt-2 text-sm text-slate-600">
                                             {index.description || (Number(index.refractiveIndex) <= 1.5
