@@ -12,11 +12,18 @@ export function cartTransformRun(input) {
   const operations = [];
 
   for (const lines of groups.values()) {
-    const parentLines = lines.filter((l) => l.lensParent?.value === "true");
+    const parentLines = lines.filter(
+      (l) => l.lensParent?.value === "true"
+    );
     if (parentLines.length === 0) continue;
 
     for (const parentLine of parentLines) {
-      const childLines = lines.filter((l) => l.id !== parentLine.id && l.lensParent?.value !== "true");
+      const childLines = lines.filter(
+        (l) =>
+          l.id !== parentLine.id &&
+          l.lensParent?.value !== "true" &&
+          l.lensGroup?.value === parentLine.lensGroup?.value
+      );
       const groupLines = [parentLine, ...childLines];
 
       const parentQty = parentLine.quantity;
@@ -43,17 +50,6 @@ export function cartTransformRun(input) {
         { key: "_lens_parent", value: "true" },
         { key: "_lens_details", value: parentLine.lensDetails.value },
       ];
-
-      if (parentQty < 1) {
-        operations.push({
-          linesMerge: {
-            cartLines: groupLines.map((l) => ({ cartLineId: l.id, quantity: 0 })),
-            parentVariantId: parentLine.merchandise.id,
-            attributes,
-          },
-        });
-        continue;
-      }
 
       operations.push({
         linesMerge: {
