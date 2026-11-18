@@ -94,6 +94,7 @@ export default function ConfigurationReview({
     const groupId = crypto.randomUUID();
 
     const baseDetails: Record<string, string> = {
+      "Design ID": groupId.slice(0, 8),
       Lens: `${lensTypeName} / ${lensIndexName}`,
       "Lens Type": lensTypeName,
       "Lens Option": lensOptionName,
