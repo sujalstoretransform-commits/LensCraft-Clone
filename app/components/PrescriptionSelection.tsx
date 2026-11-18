@@ -46,11 +46,11 @@ export default function PrescriptionSelection({
             Prescription
           </p>
 
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
             How would you like to provide your prescription?
           </h1>
 
-          <p className="mt-3 text-sm leading-6 text-slate-500 md:text-base">
+          <p className="mt-3 text-slate-600">
             Choose how you want to share your prescription with us.
           </p>
         </div>
