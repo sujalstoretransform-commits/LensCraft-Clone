@@ -89,16 +89,17 @@ export default function CoatingReview({
     return (
         <section className="w-full bg-white px-5 py-8 md:px-12">
             <div className="w-full">
+
                 <div className="mb-8">
-                    <p className="mb-2 text-sm font-semibold text-blue-600">
+                    <p className="text-sm font-semibold text-blue-600">
                         LENS CONFIGURATION
                     </p>
 
-                    <h2 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+                    <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
                         Coating &amp; Review
-                    </h2>
+                    </h1>
 
-                    <p className="mt-2 text-sm leading-6 text-slate-500 sm:text-base">
+                    <p className="mt-3 text-slate-600">
                         Every pair includes essential protective coatings.
                         Choose any optional add-ons you need.
                     </p>

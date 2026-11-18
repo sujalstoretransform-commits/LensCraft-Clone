@@ -66,11 +66,15 @@ export default function LensTechnologySelector({
         <section className="w-full bg-white px-5 py-8 md:px-12">
             <div className="w-full">
                 <div className="mb-8">
-                    <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">
+                    <p className="text-sm font-semibold text-blue-600">
+                        LENS CONFIGURATION
+                    </p>
+
+                    <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
                         Choose your lens technology
                     </h1>
 
-                    <p className="mt-2 text-sm leading-6 text-slate-500">
+                    <p className="mt-3 text-slate-600">
                         Select the light-adaptive technology that best suits your needs.
                     </p>
                 </div>
